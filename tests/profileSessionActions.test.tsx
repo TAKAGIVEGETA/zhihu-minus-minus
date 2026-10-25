@@ -11,6 +11,8 @@ const mockSwitch = jest.fn();
 const mockRefetchMe = jest.fn();
 let mockPullRefreshProps: {
   enabled?: boolean;
+  holdDistance?: number;
+  children?: React.ReactNode;
   refreshing: boolean;
   onRefresh: () => void | Promise<void>;
 };
@@ -136,6 +138,22 @@ beforeEach(() => {
 test('profile refresh state is driven only by the manual pull action', async () => {
   const host = await render(<ProfileScreen />);
   expect(mockPullRefreshProps.refreshing).toBe(false);
+  expect(mockPullRefreshProps.holdDistance).toBe(0);
+  const scrollView = mockPullRefreshProps.children as {
+    props: {
+      scrollEnabled?: boolean;
+      showsVerticalScrollIndicator?: boolean;
+      overScrollMode?: string;
+      contentContainerStyle?: { flexGrow?: number; justifyContent?: string };
+    };
+  };
+  expect(scrollView.props.scrollEnabled).toBe(false);
+  expect(scrollView.props.showsVerticalScrollIndicator).toBe(false);
+  expect(scrollView.props.overScrollMode).toBe('never');
+  expect(scrollView.props.contentContainerStyle).toEqual({
+    flexGrow: 1,
+    justifyContent: 'center',
+  });
 
   await act(async () => {
     await mockPullRefreshProps.onRefresh();

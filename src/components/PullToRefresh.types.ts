@@ -4,6 +4,7 @@ export interface PullToRefreshProps {
   children: ReactElement;
   enabled?: boolean;
   indicatorTop: number;
+  holdDistance?: number;
   onRefresh: () => void | Promise<void>;
   refreshing: boolean;
   backgroundColor: string;

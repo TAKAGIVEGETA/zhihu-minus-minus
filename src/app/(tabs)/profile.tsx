@@ -284,8 +284,13 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
       className="flex-1"
       bounces={false}
       alwaysBounceVertical
+      scrollEnabled={false}
+      showsVerticalScrollIndicator={false}
+      overScrollMode="never"
+      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
       enabled={isActive}
       indicatorTop={insets.top + 10}
+      holdDistance={0}
       onRefresh={() => void refreshProfileManually()}
       refreshing={isRefreshing}
       backgroundColor={Colors[colorScheme].surface}
@@ -506,8 +511,6 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
           </Text>
         </BouncyButton>
       )}
-
-      <View className="h-[100px] bg-transparent" />
 
       <BottomSheet
         visible={accountModalVisible}
