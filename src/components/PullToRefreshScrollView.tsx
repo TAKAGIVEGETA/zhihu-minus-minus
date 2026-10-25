@@ -9,7 +9,6 @@ type PullToRefreshScrollViewProps = Omit<
   children: ReactNode;
   enabled?: boolean;
   indicatorTop: number;
-  holdDistance?: number;
   onRefresh: () => void | Promise<void>;
   refreshing: boolean;
   backgroundColor: string;
@@ -21,7 +20,6 @@ export function PullToRefreshScrollView({
   children,
   enabled,
   indicatorTop,
-  holdDistance,
   onRefresh,
   refreshing,
   backgroundColor,
@@ -33,7 +31,6 @@ export function PullToRefreshScrollView({
     <PullToRefresh
       enabled={enabled}
       indicatorTop={indicatorTop}
-      holdDistance={holdDistance}
       onRefresh={onRefresh}
       refreshing={refreshing}
       backgroundColor={backgroundColor}

@@ -42,7 +42,6 @@ export function PullToRefresh({
   children,
   enabled = true,
   indicatorTop,
-  holdDistance = REFRESH_HOLD_DISTANCE,
   onRefresh,
   refreshing,
   backgroundColor,
@@ -162,7 +161,7 @@ export function PullToRefresh({
       <AnimatedPullRefreshNativeView
         enabled={enabled}
         hapticsEnabled={hapticsEnabled}
-        holdDistance={holdDistance}
+        holdDistance={REFRESH_HOLD_DISTANCE}
         maxPullDistance={MAX_PULL_DISTANCE}
         onPull={pullHandler}
         onRefreshTriggered={handleRefreshTriggered}
