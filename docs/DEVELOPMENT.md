@@ -295,7 +295,7 @@ xcrun simctl openurl booted 'zhihu--:///dev/rich-content/prototype?caseId=attach
 
 - [`ci.yml`](../.github/workflows/ci.yml) 在 Pull Request 和 `main` push 时运行 `npm ci` 与 `npm run check`。
 - [`build.yaml`](../.github/workflows/build.yaml) 手动构建四个 Android 单 ABI APK 和一个未签名 iOS IPA；`build_mode=build` 只保留 7 天的 artifact，`build_mode=release` 还会创建 Release。
-- [`ios-ipa.yml`](../.github/workflows/ios-ipa.yml) 手动快速构建一个未签名 iOS IPA。它跳过质量检查、Android、Release 和 telemetry 上传，不需要 Actions Secret，适合只取安装前待签名包；正式发布仍应使用完整发布流程。
+- [`ios-ipa.yml`](../.github/workflows/ios-ipa.yml) 手动快速构建一个未签名 iOS IPA。它跳过质量检查、Android、Release 和 telemetry 上传，并在这个 CI 生成环境中排除未启用的 iOS Firebase autolinking，不需要 Actions Secret，适合只取安装前待签名包；正式发布仍应使用完整发布流程。
 - Release 必须从 `main` 运行，且 `package.json`、`app.json` 版本一致，`v<version>` tag 尚不存在。`publish_release=false` 创建草稿，`true` 才直接公开。
 - 构建工作流的 Android job 需要 `EXPO_TOKEN` 加上 4 个 telemetry Secret，iOS job 需要其中 4 个 telemetry Secret；由于两个 job 总是一起运行，完整 workflow 需要配置 `EXPO_TOKEN`、`FIREBASE_ANDROID_JSON_B64`、`FIREBASE_IOS_PLIST_B64`、`EXPO_PUBLIC_SENTRY_DSN` 和 `SENTRY_AUTH_TOKEN`。详情见 [`docs/RELEASING.md`](./RELEASING.md) 和 [`docs/TELEMETRY.md`](./TELEMETRY.md)。
 

@@ -35,11 +35,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Disable unused Firebase iOS autolinking
+        run: |
+          cat > react-native.config.js <<'EOF'
+          module.exports = {
+            dependencies: {
+              '@react-native-firebase/app': {
+                platforms: { ios: null },
+              },
+              '@react-native-firebase/analytics': {
+                platforms: { ios: null },
+              },
+            },
+          };
+          EOF
+
       - name: Expo prebuild iOS
         run: npx expo prebuild --platform ios --no-install
 
       - name: Install CocoaPods dependencies
-        run: pod install --project-directory=ios
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "pod install attempt ${attempt}"
+            if pod install --project-directory=ios; then
+              exit 0
+            fi
+            sleep $((attempt * 20))
+          done
+          echo "pod install failed after 3 attempts"
+          exit 1
 
       - name: Build unsigned iOS app
         run: |
