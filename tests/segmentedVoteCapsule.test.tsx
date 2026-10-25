@@ -6,6 +6,7 @@ import {
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { voteContent } from '../src/api/zhihu/voters';
 import { SegmentedVoteCapsule } from '../src/components/SegmentedVoteCapsule';
+import { impactAsync } from '../src/utils/haptics';
 
 jest.mock('../src/api/zhihu', () => ({
   voteContent: jest.fn(),
@@ -58,6 +59,10 @@ jest.mock('../src/components/BouncyButton', () => ({
     jest.requireActual<typeof import('react-native')>('react-native').Pressable,
 }));
 jest.mock('../src/utils/toast', () => ({ showToast: jest.fn() }));
+jest.mock('../src/utils/haptics', () => ({
+  ImpactFeedbackStyle: { Medium: 'medium' },
+  impactAsync: jest.fn(),
+}));
 
 const clients: QueryClient[] = [];
 const previewKey = ['answer-preview-list', 'synthetic-answer', 1] as const;
@@ -259,7 +264,8 @@ test('a server count replaces a string count and reaches the external callback',
   });
 });
 
-test('the upvote segment can opt into press haptics', async () => {
+test('the upvote segment triggers haptics when opting in', async () => {
+  jest.mocked(voteContent).mockResolvedValueOnce({ voted: 1, voteCount: 12 });
   const host = await render(
     <QueryClientProvider client={createClient()}>
       <SegmentedVoteCapsule
@@ -270,8 +276,6 @@ test('the upvote segment can opt into press haptics', async () => {
       />
     </QueryClientProvider>,
   );
-  const upvote = host.getAllByRole('button')[0] as {
-    props: { hapticFeedback?: boolean };
-  };
-  expect(upvote.props.hapticFeedback).toBe(true);
+  await fireEvent.press(host.getAllByRole('button')[0]);
+  expect(impactAsync).toHaveBeenCalledWith('medium');
 });

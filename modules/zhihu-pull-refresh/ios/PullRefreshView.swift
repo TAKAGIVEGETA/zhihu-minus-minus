@@ -8,6 +8,7 @@ public final class PullRefreshView: ExpoView, UIGestureRecognizerDelegate {
   private let pullGesture: UIPanGestureRecognizer
   private let progressFeedback = UIImpactFeedbackGenerator(style: .light)
   private let thresholdFeedback = UIImpactFeedbackGenerator(style: .rigid)
+  private var refreshLatchFallback: DispatchWorkItem?
 
   private weak var childView: UIView?
   private var threshold: CGFloat = 76
@@ -35,6 +36,7 @@ public final class PullRefreshView: ExpoView, UIGestureRecognizerDelegate {
   }
 
   deinit {
+    refreshLatchFallback?.cancel()
     pullGesture.isEnabled = false
   }
 
@@ -61,15 +63,19 @@ public final class PullRefreshView: ExpoView, UIGestureRecognizerDelegate {
   }
 
   func setRefreshing(_ value: Bool) {
-    guard refreshing != value else { return }
+    // React can batch a fast refresh into a final refreshing=false update.
+    // The native view must still clear a latched pull in that case.
+    guard refreshing != value || (!value && refreshLatched) else { return }
 
     refreshing = value
     thresholdHapticArmed = !value
     lastHapticAt = 0
     if value {
+      refreshLatchFallback?.cancel()
       refreshLatched = true
       animatePull(to: holdDistance)
     } else {
+      refreshLatchFallback?.cancel()
       refreshLatched = false
       animatePull(to: 0)
     }
@@ -182,6 +188,7 @@ public final class PullRefreshView: ExpoView, UIGestureRecognizerDelegate {
       emitThresholdHapticIfNeeded()
       refreshLatched = true
       animatePull(to: holdDistance)
+      scheduleRefreshLatchFallback()
       onRefreshTriggered()
     } else {
       animatePull(to: 0)
@@ -245,6 +252,19 @@ public final class PullRefreshView: ExpoView, UIGestureRecognizerDelegate {
 
     emitImpact(progressFeedback, intensity: 0.14 + progress * 0.38)
     lastHapticAt = now
+  }
+
+  private func scheduleRefreshLatchFallback() {
+    refreshLatchFallback?.cancel()
+    let fallback = DispatchWorkItem { [weak self] in
+      guard let self, !self.refreshing else { return }
+      self.refreshLatched = false
+      self.thresholdHapticArmed = true
+      self.lastHapticAt = 0
+      self.animatePull(to: 0)
+    }
+    refreshLatchFallback = fallback
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: fallback)
   }
 
   private func emitImpact(_ feedback: UIImpactFeedbackGenerator, intensity: CGFloat) {

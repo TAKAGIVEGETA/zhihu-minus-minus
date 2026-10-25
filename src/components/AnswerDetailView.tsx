@@ -732,6 +732,7 @@ export const AnswerDetailView = ({
             }
             type="answers"
             allowCountShrink
+            hapticFeedback
           />
         }
         trailing={
