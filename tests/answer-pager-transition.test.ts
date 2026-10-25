@@ -91,6 +91,7 @@ const mockHeaderThresholds = new Map<string, number>();
 const mockSetPage = jest.fn();
 const mockSetParams = jest.fn();
 const mockFetchNextPage = jest.fn();
+const mockSelectionAsync = jest.fn();
 const mockRouter = {
   setParams: mockSetParams,
   push: jest.fn(),
@@ -244,6 +245,9 @@ jest.mock('../src/components/Themed', () => {
 jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton:
     jest.requireActual<typeof import('react-native')>('react-native').Pressable,
+}));
+jest.mock('../src/utils/haptics', () => ({
+  selectionAsync: (...args: unknown[]) => mockSelectionAsync(...args),
 }));
 jest.mock('../src/store/useSettingsStore', () => ({
   useSettingsStore: Object.assign(
@@ -453,6 +457,23 @@ afterEach(() => {
 });
 
 describe('answer pager list transitions', () => {
+  it('fires selection haptics only when the selected answer identity changes', async () => {
+    setList(['42', '11', '99']);
+    await render(React.createElement(AnswerDetailScreen));
+
+    await selectPage(0);
+    expect(mockSelectionAsync).not.toHaveBeenCalled();
+
+    await selectPage(1);
+    expect(mockSelectionAsync).toHaveBeenCalledTimes(1);
+
+    await selectPage(1);
+    expect(mockSelectionAsync).toHaveBeenCalledTimes(1);
+
+    await selectPage(2);
+    expect(mockSelectionAsync).toHaveBeenCalledTimes(2);
+  });
+
   it('shares a reading session across pager children and replaces it on account change', async () => {
     mockPages = [{ data: [{ id: '42' }, { id: '11' }] }];
     const page = await render(React.createElement(AnswerDetailScreen));

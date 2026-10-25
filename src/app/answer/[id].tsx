@@ -25,6 +25,7 @@ import { useAnswerPagerSource } from '@/hooks/useAnswerPagerSource';
 import { useNeighborAnswerPrefetch } from '@/hooks/useNeighborAnswerPrefetch';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { getAnswerReadingContext } from '@/utils/answerReadingContext';
+import { selectionAsync } from '@/utils/haptics';
 
 export default function AnswerScreen() {
   const params = useLocalSearchParams<{
@@ -148,6 +149,7 @@ function AnswerDetailScreen() {
   const selectedId =
     selection.pagerKey === pagerKey ? selection.answerId : initialId;
   const pagerRef = useRef<PagerView>(null);
+  const hapticSelectionRef = useRef({ pagerKey, answerId: initialId });
 
   // 3. 构建 ID 列表
   const latestAnswerIds = useMemo(() => {
@@ -468,6 +470,13 @@ function AnswerDetailScreen() {
           const newId = answerIds[newIndex];
           if (newId) {
             nativePage.current = { pagerKey, pageListKey, index: newIndex };
+            const previousSelection = hapticSelectionRef.current;
+            if (previousSelection.pagerKey !== pagerKey) {
+              hapticSelectionRef.current = { pagerKey, answerId: newId };
+            } else if (previousSelection.answerId !== newId) {
+              hapticSelectionRef.current = { pagerKey, answerId: newId };
+              void selectionAsync();
+            }
             selectAnswer(newId);
           }
 

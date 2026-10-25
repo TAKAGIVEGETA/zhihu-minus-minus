@@ -8,6 +8,12 @@ const mockVerify = jest.fn();
 const mockClearCookies = jest.fn();
 const mockPush = jest.fn();
 const mockSwitch = jest.fn();
+const mockRefetchMe = jest.fn();
+let mockPullRefreshProps: {
+  enabled?: boolean;
+  refreshing: boolean;
+  onRefresh: () => void | Promise<void>;
+};
 let mockSession = 0;
 const mockAuthState = {
   cookies: 'z_c0=synthetic-account',
@@ -38,7 +44,7 @@ jest.mock('../src/api/zhihu', () => ({
   getMemberWithFallback: jest.fn(),
 }));
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({ data: undefined, refetch: jest.fn() }),
+  useQuery: () => ({ data: undefined, refetch: mockRefetchMe }),
   useQueryClient: () => ({ clear: jest.fn() }),
 }));
 jest.mock('@preeternal/react-native-cookie-manager', () => ({
@@ -63,6 +69,14 @@ jest.mock('../src/components/AuthStorageNotice', () => ({
 }));
 jest.mock('../src/components/StableAvatar', () => ({
   StableAvatar: () => null,
+}));
+jest.mock('../src/components/PullToRefresh', () => ({
+  PullToRefresh: (
+    props: typeof mockPullRefreshProps & { children: React.ReactNode },
+  ) => {
+    mockPullRefreshProps = props;
+    return props.children;
+  },
 }));
 jest.mock('../src/components/BouncyButton', () => ({
   BouncyButton: ({ onPress, ...props }: PressableProps) =>
@@ -110,7 +124,26 @@ jest.mock('../src/utils/haptics', () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockRefetchMe.mockResolvedValue({ data: undefined });
+  mockPullRefreshProps = {
+    enabled: true,
+    refreshing: false,
+    onRefresh: jest.fn(),
+  };
   mockSession = 0;
+});
+
+test('profile refresh state is driven only by the manual pull action', async () => {
+  const host = await render(<ProfileScreen />);
+  expect(mockPullRefreshProps.refreshing).toBe(false);
+
+  await act(async () => {
+    await mockPullRefreshProps.onRefresh();
+  });
+
+  expect(mockRefetchMe).toHaveBeenCalledTimes(1);
+  expect(mockPullRefreshProps.refreshing).toBe(false);
+  await host.unmount();
 });
 
 test('account verification finishing after a session change cannot switch accounts', async () => {

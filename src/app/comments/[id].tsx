@@ -314,6 +314,7 @@ export default function CommentScreen() {
 
             {item.child_comment_count > 0 && (
               <BouncyButton
+                hapticFeedback
                 style={{
                   marginTop: 8,
                   borderRadius: 8,

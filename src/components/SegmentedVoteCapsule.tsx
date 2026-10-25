@@ -13,6 +13,7 @@ export interface SegmentedVoteCapsuleProps {
   type?: VoteContentType;
   showDownvote?: boolean;
   allowCountShrink?: boolean;
+  hapticFeedback?: boolean;
   onVoteChange?: (voted: number, count: number) => void;
   style?: StyleProp<ViewStyle>;
 }
@@ -24,6 +25,7 @@ export function SegmentedVoteCapsule({
   type = 'answers',
   showDownvote = true,
   allowCountShrink = false,
+  hapticFeedback = false,
   onVoteChange,
   style,
 }: SegmentedVoteCapsuleProps) {
@@ -83,6 +85,7 @@ export function SegmentedVoteCapsule({
         type={type}
         variant="segmented"
         allowCountShrink={allowCountShrink}
+        hapticFeedback={hapticFeedback}
         onVoteChange={(nextVoted, nextCount) => {
           setCurrentVoted(nextVoted);
           setCurrentCount(nextCount);

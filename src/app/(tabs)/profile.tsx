@@ -3,23 +3,20 @@ import CookieManager from '@preeternal/react-native-cookie-manager';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
 import React from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-} from 'react-native';
+import { ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { verifyZhihuSession } from '@/api/session';
 import { getMe, getMemberWithFallback } from '@/api/zhihu';
 import { AuthStorageNotice } from '@/components/AuthStorageNotice';
 import { BouncyButton } from '@/components/BouncyButton';
 import { BottomSheet } from '@/components/overlays/BottomSheet';
+import { PullToRefreshScrollView } from '@/components/PullToRefreshScrollView';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import { useRefreshAction } from '@/hooks/useRefreshAction';
 import { getAuthSessionVersion, useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useVerificationStore } from '@/store/useVerificationStore';
@@ -59,7 +56,6 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
   const {
     data: me,
     isLoading: isMeLoading,
-    isFetching: isMeFetching,
     isError: isMeError,
     refetch: refetchMe,
   } = useQuery({
@@ -84,11 +80,7 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
 
   const memberId = me?.url_token || me?.id;
 
-  const {
-    data: member,
-    isFetching: isMemberFetching,
-    isError: isMemberError,
-  } = useQuery({
+  const { data: member, isError: isMemberError } = useQuery({
     queryKey: ['me-detail', memberId],
     queryFn: () => getMemberWithFallback(memberId as string),
     enabled: !!memberId,
@@ -96,7 +88,6 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
 
   const profile = member || me;
 
-  const isRefreshing = isMeFetching || isMemberFetching;
   const refreshProfile = React.useCallback(async () => {
     if (!cookies) return;
     const meResult = await refetchMe();
@@ -111,6 +102,8 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
       // The member query exposes its own retry UI below.
     }
   }, [cookies, queryClient, refetchMe]);
+  const { refresh: refreshProfileManually, refreshing: isRefreshing } =
+    useRefreshAction(refreshProfile);
 
   const unreadCount =
     (me?.default_notifications_count || 0) +
@@ -287,15 +280,17 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
   };
 
   return (
-    <ScrollView
+    <PullToRefreshScrollView
       className="flex-1"
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => void refreshProfile()}
-          tintColor={accentColor}
-        />
-      }
+      bounces
+      alwaysBounceVertical
+      enabled={isActive}
+      indicatorTop={insets.top + 10}
+      onRefresh={() => void refreshProfileManually()}
+      refreshing={isRefreshing}
+      backgroundColor={Colors[colorScheme].background}
+      indicatorColor={accentColor}
+      indicatorTrackColor={Colors[colorScheme].border}
     >
       {/* 顶部用户信息区 */}
       <AuthStorageNotice />
@@ -337,7 +332,7 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
           <QueryErrorView
             compact
             message="个人资料加载失败"
-            onRetry={() => void refreshProfile()}
+            onRetry={() => void refreshProfileManually()}
           />
         ) : (
           <BouncyButton
@@ -402,7 +397,7 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
         {me && isMemberError ? (
           <BouncyButton
             className="items-center mt-3 bg-transparent"
-            onPress={() => void refreshProfile()}
+            onPress={() => void refreshProfileManually()}
           >
             <Text type="secondary" className="text-xs">
               详细统计加载失败，点此重试
@@ -655,7 +650,7 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
           </BouncyButton>
         </View>
       </BottomSheet>
-    </ScrollView>
+    </PullToRefreshScrollView>
   );
 }
 

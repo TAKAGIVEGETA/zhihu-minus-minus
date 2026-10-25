@@ -558,6 +558,7 @@ export default function ArticleDetail() {
               voted={zhihuData?.relationship?.voting ?? 0}
               type="articles"
               allowCountShrink
+              hapticFeedback
             />
           }
           trailing={

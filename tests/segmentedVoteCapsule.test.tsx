@@ -258,3 +258,20 @@ test('a server count replaces a string count and reaches the external callback',
     expect(onVoteChange).toHaveBeenCalledWith(-1, 12500);
   });
 });
+
+test('the upvote segment can opt into press haptics', async () => {
+  const host = await render(
+    <QueryClientProvider client={createClient()}>
+      <SegmentedVoteCapsule
+        id="synthetic-article"
+        count={12}
+        type="articles"
+        hapticFeedback
+      />
+    </QueryClientProvider>,
+  );
+  const upvote = host.getAllByRole('button')[0] as {
+    props: { hapticFeedback?: boolean };
+  };
+  expect(upvote.props.hapticFeedback).toBe(true);
+});

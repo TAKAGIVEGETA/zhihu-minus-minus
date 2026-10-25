@@ -27,6 +27,7 @@ export const LikeButton = ({
   type = 'answers',
   variant = 'default',
   allowCountShrink = false,
+  hapticFeedback = false,
   onVoteChange,
 }: {
   id: string | number;
@@ -35,6 +36,7 @@ export const LikeButton = ({
   type?: VoteContentType;
   variant?: 'default' | 'ghost' | 'minimal' | 'segmented';
   allowCountShrink?: boolean;
+  hapticFeedback?: boolean;
   onVoteChange?: (voted: number, count: number) => void;
 }) => {
   const [voted, setVoted] = useState(initialVoted);
@@ -148,6 +150,7 @@ export const LikeButton = ({
       accessibilityState={{ busy: loading, selected: isUpvoted }}
       onPress={handlePress}
       disabled={loading}
+      hapticFeedback={hapticFeedback}
       className={
         variant === 'default'
           ? 'flex-row items-center px-2 py-1.5 rounded-md'
