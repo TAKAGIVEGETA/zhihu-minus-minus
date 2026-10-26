@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigation, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { deletePin } from '@/api/zhihu/pin';
@@ -19,7 +19,6 @@ export function usePinActions(
   pin: Pick<ZhihuPin, 'id' | 'author'> | undefined,
 ): ActionSheetOption[] {
   const router = useRouter();
-  const navigation = useNavigation();
   const queryClient = useQueryClient();
   const me = useAuthStore((state) => state.me);
   const authenticated = useAuthStore((state) => Boolean(state.cookies));
@@ -61,10 +60,7 @@ export function usePinActions(
       ])
         void queryClient.invalidateQueries({ queryKey: [key] });
       Alert.alert('删除成功', '想法已删除');
-      // The deleted detail may still be visible behind a newer list route.
-      // Route-local dispatch supplies its source; target keeps POP scoped to it.
-      const target = navigation.getState()?.key;
-      if (target) navigation.dispatch({ type: 'GO_BACK', target });
+      router.back();
     },
     onError: (error: unknown, attempt) => {
       if (current(attempt))

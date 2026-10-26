@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import {
   Image,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -18,7 +19,6 @@ import {
 } from 'react-native';
 import { SvgUri } from 'react-native-svg';
 import { useRuntimeThemeColors } from '@/components/Themed';
-import { PaneModal as Modal } from '@/features/adaptive-layout/PaneModal';
 import {
   isRichTextNativeAvailable,
   RichTextNativeView,

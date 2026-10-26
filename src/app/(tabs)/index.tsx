@@ -7,7 +7,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import React, {
   useCallback,
   useEffect,
@@ -15,7 +15,12 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ActivityIndicator, Platform, StyleSheet } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import PagerView, {
   type PagerViewOnPageScrollEvent,
@@ -49,20 +54,12 @@ import { DailyList } from '@/components/DailyList';
 import { FeedCard } from '@/components/FeedCard';
 import { GuestBootstrap } from '@/components/GuestBootstrap';
 import { HotCard, type HotItem } from '@/components/HotCard';
-import {
-  getHomeNavigationMetrics,
-  ScrollableNavigationRow,
-} from '@/components/home/ScrollableNavigationRow';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { RecentMoments } from '@/components/RecentMoments';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import {
-  usePaneActive,
-  usePaneDimensions,
-} from '@/features/adaptive-layout/PaneContext';
 import { hasReusableAnswerDetail } from '@/features/rich-content';
 import { useCollapsibleChromeScroll } from '@/hooks/useCollapsibleChromeScroll';
 import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
@@ -166,10 +163,11 @@ const MAX_AUTO_FETCH_ROUNDS = 3;
 const MIN_REFRESH_INDICATOR_MS = 500;
 
 export default function HomeScreen() {
-  const { width: paneWidth } = usePaneDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  const containerWidth = Math.min(windowWidth - 40, 500);
 
   const insets = useSafeAreaInsets();
-  const isFocused = usePaneActive();
+  const isFocused = useIsFocused();
   const colorScheme = useColorScheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
@@ -194,18 +192,13 @@ export default function HomeScreen() {
   }, [currentTabs]);
   const homeTabsCount = homeTabs.length;
 
-  const bottomIconsCount =
-    (homeTabsCount > 0 ? 1 : 0) +
-    (currentTabs.includes('publish') ? 1 : 0) +
-    (currentTabs.includes('profile') ? 1 : 0);
-  const {
-    topInset,
-    topPadding,
-    bottomViewportWidth: containerWidth,
-    bottomContentWidth,
-    bottomItemWidth,
-    bottomButtonWidth: bottomCapsuleWidth,
-  } = getHomeNavigationMetrics(paneWidth, bottomIconsCount);
+  const bottomCapsuleWidth = useMemo(() => {
+    const hasPublish = currentTabs.includes('publish');
+    const hasProfile = currentTabs.includes('profile');
+    const totalBottomIcons =
+      (homeTabsCount > 0 ? 1 : 0) + (hasPublish ? 1 : 0) + (hasProfile ? 1 : 0);
+    return containerWidth / (totalBottomIcons || 1) - 20;
+  }, [currentTabs, homeTabsCount, containerWidth]);
 
   // 计算初始页码
   const initialPageIndex = useMemo(() => {
@@ -252,14 +245,6 @@ export default function HomeScreen() {
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const indicatorBgColor = useThemeColor({}, 'primary_26');
   const [currentPage, setCurrentPage] = useState(initialPageIndex);
-  const bottomActiveIndex =
-    currentTabs[currentPage] === 'profile'
-      ? (homeTabsCount > 0 ? 1 : 0) + (currentTabs.includes('publish') ? 1 : 0)
-      : currentTabs[currentPage] === 'publish'
-        ? homeTabsCount > 0
-          ? 1
-          : 0
-        : 0;
   const { ready: guestCookieReady, attempt: guestBootstrapAttempt } =
     useGuestBootstrap(!cookies);
 
@@ -423,7 +408,7 @@ export default function HomeScreen() {
     // 底部导航栏总图标数 (首页算一个)
     const totalBottomIcons =
       (homeTabsCount > 0 ? 1 : 0) + (hasPublish ? 1 : 0) + (hasProfile ? 1 : 0);
-    const iconWidth = bottomContentWidth / (totalBottomIcons || 1);
+    const iconWidth = containerWidth / (totalBottomIcons || 1);
 
     // 构建插值映射表
     const inputRange: number[] = [];
@@ -549,7 +534,7 @@ export default function HomeScreen() {
         style={[
           styles.topNavContainer,
           colorScheme === 'light' && styles.lightTranslucentShadow,
-          { top: insets.top, left: topInset, right: topInset },
+          { top: insets.top },
           topNavAnimStyle,
         ]}
       >
@@ -566,75 +551,59 @@ export default function HomeScreen() {
             },
           ]}
         >
-          <View style={[styles.topNav, { paddingHorizontal: topPadding }]}>
-            <ScrollableNavigationRow
-              testID="home-top-navigation"
-              contentWidth={homeTabsCount * 58 + 40}
-              activeStart={
-                Math.min(currentPage, Math.max(0, homeTabsCount - 1)) * 58
-              }
-              activeEnd={
-                Math.min(currentPage, Math.max(0, homeTabsCount - 1)) * 58 + 54
-              }
+          <View style={styles.topNav}>
+            <View
+              style={{
+                flexDirection: 'row',
+                flex: 1,
+                backgroundColor: 'transparent',
+                alignItems: 'center',
+                position: 'relative',
+              }}
             >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  flex: 1,
-                  backgroundColor: 'transparent',
-                  alignItems: 'center',
-                  position: 'relative',
-                }}
-              >
-                <Animated.View
-                  style={[
-                    styles.topPill,
-                    { backgroundColor: indicatorBgColor },
-                    topIndicatorStyle,
-                  ]}
-                />
-                {currentTabs
-                  .filter((t) => !['publish', 'profile'].includes(t))
-                  .map((tab, index) => {
-                    const labels: Record<string, string> = {
-                      following: '关注',
-                      recommend: '推荐',
-                      local: localCityName || '同城',
-                      hot: '热榜',
-                      daily: '日报',
-                    };
-                    return (
-                      <BouncyButton
-                        key={tab}
-                        accessibilityRole="tab"
-                        accessibilityLabel={labels[tab]}
-                        accessibilityState={{ selected: currentPage === index }}
-                        onPress={() => handleTabPress(index)}
-                        style={[
-                          styles.navItem,
-                          { width: 54, paddingHorizontal: 0 },
-                        ]}
-                      >
-                        <TopTabLabel
-                          index={index}
-                          label={labels[tab]}
-                          scrollX={scrollX}
-                          activeColor={tintColor}
-                          inactiveColor={secondaryTextColor}
-                        />
-                      </BouncyButton>
-                    );
-                  })}
-              </View>
-              <BouncyButton
-                accessibilityRole="button"
-                accessibilityLabel="搜索"
-                onPress={() => router.push('/search')}
-                style={styles.searchBtn}
-              >
-                <Ionicons name="search" size={22} color={textColor} />
-              </BouncyButton>
-            </ScrollableNavigationRow>
+              <Animated.View
+                style={[
+                  styles.topPill,
+                  { backgroundColor: indicatorBgColor },
+                  topIndicatorStyle,
+                ]}
+              />
+              {currentTabs
+                .filter((t) => !['publish', 'profile'].includes(t))
+                .map((tab, index) => {
+                  const labels: Record<string, string> = {
+                    following: '关注',
+                    recommend: '推荐',
+                    local: localCityName || '同城',
+                    hot: '热榜',
+                    daily: '日报',
+                  };
+                  return (
+                    <BouncyButton
+                      key={tab}
+                      onPress={() => handleTabPress(index)}
+                      style={[
+                        styles.navItem,
+                        { width: 54, paddingHorizontal: 0 },
+                      ]}
+                    >
+                      <TopTabLabel
+                        index={index}
+                        label={labels[tab]}
+                        scrollX={scrollX}
+                        activeColor={tintColor}
+                        inactiveColor={secondaryTextColor}
+                      />
+                    </BouncyButton>
+                  );
+                })}
+            </View>
+            <BouncyButton
+              onPress={() => router.push('/search')}
+              style={styles.searchBtn}
+            >
+              <Ionicons name="search" size={22} color={textColor} />
+            </BouncyButton>
           </View>
         </BlurView>
       </Animated.View>
@@ -662,15 +631,7 @@ export default function HomeScreen() {
               },
             ]}
           >
-            <ScrollableNavigationRow
-              testID="home-bottom-navigation"
-              contentWidth={bottomContentWidth}
-              activeStart={bottomActiveIndex * bottomItemWidth + 10}
-              activeEnd={
-                bottomActiveIndex * bottomItemWidth + 10 + bottomCapsuleWidth
-              }
-              contentStyle={styles.bottomNavItems}
-            >
+            <View style={styles.bottomNavItems}>
               {/* 联动指示器 */}
               <Animated.View
                 style={[
@@ -685,7 +646,6 @@ export default function HomeScreen() {
 
               {currentTabs.some((t) => !['publish', 'profile'].includes(t)) && (
                 <BottomTabIcon
-                  label="首页"
                   // 判断逻辑：当前在首页区域且当前子 Tab 有滚动
                   isScrollTop={
                     currentPage <
@@ -722,7 +682,6 @@ export default function HomeScreen() {
 
               {currentTabs.includes('publish') && (
                 <BottomTabIcon
-                  label="发布"
                   icon={
                     currentTabs[currentPage] === 'publish'
                       ? 'add-circle'
@@ -742,7 +701,6 @@ export default function HomeScreen() {
 
               {currentTabs.includes('profile') && (
                 <BottomTabIcon
-                  label="我的"
                   icon={
                     currentTabs[currentPage] === 'profile'
                       ? 'person'
@@ -758,7 +716,7 @@ export default function HomeScreen() {
                   width={bottomCapsuleWidth}
                 />
               )}
-            </ScrollableNavigationRow>
+            </View>
           </BlurView>
         </Animated.View>
       )}
@@ -806,7 +764,6 @@ function TopTabLabel({
 const _AnimatedIcon = Animated.createAnimatedComponent(Ionicons);
 
 function BottomTabIcon({
-  label,
   icon,
   onPress,
   color,
@@ -814,7 +771,6 @@ function BottomTabIcon({
   isScrollTop,
   width,
 }: {
-  label: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
   onPress: () => void;
   color: string;
@@ -843,8 +799,6 @@ function BottomTabIcon({
   return (
     <View style={styles.bottomTabItem} className="bg-transparent">
       <BouncyButton
-        accessibilityRole="button"
-        accessibilityLabel={label}
         onPress={onPress}
         style={{
           width: width || 44,
@@ -1702,7 +1656,7 @@ const styles = StyleSheet.create({
   bottomBlur: { borderRadius: 32, overflow: 'hidden', height: 64 },
   bottomNavItems: {
     flexDirection: 'row',
-    height: BOTTOM_NAV_HEIGHT,
+    flex: 1,
     alignItems: 'center',
     position: 'relative',
   },

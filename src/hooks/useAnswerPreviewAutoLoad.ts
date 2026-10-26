@@ -6,7 +6,6 @@ import {
   type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { usePaneVisible } from '@/features/adaptive-layout/PaneContext';
 
 type FooterView = Pick<ViewInstance, 'measureInWindow'>;
 type BodyLoader = () => Promise<unknown>;
@@ -32,7 +31,6 @@ export function useAnswerPreviewAutoLoad({
 }: AutoLoadOptions) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const paneVisible = usePaneVisible();
   const epoch = useMemo(
     () => ({
       scope,
@@ -49,11 +47,10 @@ export function useAnswerPreviewAutoLoad({
   const inputs = useMemo(
     () => ({
       expandedIds,
-      paneVisible,
       top: navigationHeight,
       bottom: height - insets.bottom,
     }),
-    [expandedIds, paneVisible, navigationHeight, height, insets.bottom],
+    [expandedIds, navigationHeight, height, insets.bottom],
   );
   const currentEpoch = useRef(epoch);
   const currentInputs = useRef(inputs);
@@ -65,19 +62,13 @@ export function useAnswerPreviewAutoLoad({
   const scheduleLatest = useRef<() => void>(() => {});
 
   const scheduleMeasure = useCallback(() => {
-    if (
-      !mounted.current ||
-      currentEpoch.current !== epoch ||
-      !currentInputs.current.paneVisible
-    )
-      return;
+    if (!mounted.current || currentEpoch.current !== epoch) return;
     epoch.sequence += 1;
     if (epoch.frame !== null) return;
     epoch.frame = requestAnimationFrame(() => {
       epoch.frame = null;
       if (!mounted.current || currentEpoch.current !== epoch) return;
       const snapshot = currentInputs.current;
-      if (!snapshot.paneVisible) return;
       const views = epoch.viewableIds.flatMap((id) => {
         const view = epoch.footers.get(id);
         const loader = epoch.loaders.get(id);
@@ -126,11 +117,7 @@ export function useAnswerPreviewAutoLoad({
             if (pending.current !== request) return;
             pending.current = null;
             // A new layout/loader/scroll requires fresh geometry in another frame.
-            if (
-              mounted.current &&
-              currentInputs.current.paneVisible &&
-              currentEpoch.current.needsCheck
-            )
+            if (mounted.current && currentEpoch.current.needsCheck)
               scheduleLatest.current();
           };
           try {
@@ -205,16 +192,8 @@ export function useAnswerPreviewAutoLoad({
     };
   }, [epoch]);
   useEffect(() => {
-    if (currentInputs.current !== inputs) return;
-    if (!inputs.paneVisible) {
-      epoch.sequence += 1;
-      if (epoch.frame !== null) cancelAnimationFrame(epoch.frame);
-      epoch.frame = null;
-      epoch.needsCheck = false;
-      return;
-    }
-    scheduleMeasure();
-  }, [epoch, inputs, scheduleMeasure]);
+    if (currentInputs.current === inputs) scheduleMeasure();
+  }, [inputs, scheduleMeasure]);
 
   return {
     registerFooter,

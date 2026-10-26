@@ -124,10 +124,6 @@ jest.mock('expo-router', () => {
   return {
     useLocalSearchParams: () => mockParams,
     useRouter: () => ({ push: mockPush, back: jest.fn() }),
-    useNavigation: () => ({
-      getState: () => ({ key: 'detail-stack' }),
-      dispatch: jest.fn(),
-    }),
     Stack: {
       Screen: ({
         options,

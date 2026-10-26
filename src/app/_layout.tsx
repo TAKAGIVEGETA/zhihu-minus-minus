@@ -4,6 +4,7 @@ import {
   DarkTheme,
   DefaultTheme,
   type Href,
+  Stack,
   ThemeProvider,
   useRouter,
 } from 'expo-router';
@@ -22,7 +23,6 @@ import { GradientMaskOverlay } from '@/components/GradientMaskOverlay';
 import { useRuntimeThemeColors } from '@/components/Themed';
 import { UpdateChecker } from '@/components/UpdateChecker';
 import { VerificationModal } from '@/components/VerificationModal';
-import { AdaptiveStack as Stack } from '@/features/adaptive-layout/AdaptiveStack';
 import { useQueryConnectivity } from '@/hooks/useQueryConnectivity';
 import {
   useSyncThemeWithNativeWind,
@@ -50,7 +50,7 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = createAppQueryClient();
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  initialRouteName: '(tabs)',
 };
 
 function RootLayout() {

@@ -1,12 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
-import {
-  Stack,
-  useLocalSearchParams,
-  useNavigation,
-  useRouter,
-} from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +9,7 @@ import {
   View as NativeView,
   StyleSheet,
   type TextInputInstance,
+  useWindowDimensions,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,7 +34,6 @@ import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { usePaneDimensions } from '@/features/adaptive-layout/PaneContext';
 import { useCommentKeyboardLayout } from '@/hooks/useCommentKeyboardLayout';
 import { useCommentRepliesQuery } from '@/hooks/useCommentQueries';
 import { useParentComment } from '@/hooks/useParentComment';
@@ -68,16 +63,15 @@ export default function ReplyDetailScreen() {
   } | null>(null);
   const inputRef = useRef<TextInputInstance>(null);
   const router = useRouter();
-  const navigation = useNavigation();
   const queryClient = useQueryClient();
   const _insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const borderColor = Colors[colorScheme].border;
   const textColor = Colors[colorScheme].text;
   const tintColor = useThemeColor({}, 'link');
-  const { width: paneWidth } = usePaneDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   // 减去头像(32) + 间距(12) + 左右padding(30)
-  const contentWidth = paneWidth - 32 - 12 - 30;
+  const contentWidth = screenWidth - 32 - 12 - 30;
   const insets = _insets;
   const v5ResourceType: CommentResourceType | null =
     resourceType === 'answers' ||
@@ -160,9 +154,7 @@ export default function ReplyDetailScreen() {
       setCommentAction(null);
       void queryClient.invalidateQueries({ queryKey: ['comments'] });
       if (returnToParent) {
-        // Remove this deleted thread without popping a newer visible list page.
-        const target = navigation.getState()?.key;
-        if (target) navigation.dispatch({ type: 'GO_BACK', target });
+        router.back();
       } else {
         void refetch();
       }

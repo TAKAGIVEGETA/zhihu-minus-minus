@@ -11,6 +11,7 @@ import {
 } from 'react';
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   type StyleProp,
@@ -31,7 +32,6 @@ import { BouncyButton } from '@/components/BouncyButton';
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { PaneModal } from '@/features/adaptive-layout/PaneModal';
 
 export interface BottomSheetHandle {
   close: () => void;
@@ -189,7 +189,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
     const hasHeader = title || subtitle || headerLeft || headerRight;
 
     return (
-      <PaneModal
+      <Modal
         visible={mounted}
         transparent
         animationType="none"
@@ -297,7 +297,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
             {children}
           </Reanimated.View>
         </KeyboardAvoidingView>
-      </PaneModal>
+      </Modal>
     );
   },
 );

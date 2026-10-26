@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query';
-import { useNavigation, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useRef } from 'react';
 import {
   Alert,
   type ScrollViewInstance as NativeScrollView,
   type ViewInstance as NativeView,
   View as RawView,
+  useWindowDimensions,
 } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
@@ -47,7 +48,6 @@ import { StableAvatar } from '@/components/StableAvatar';
 import { Text, ThemedIcon, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { usePaneDimensions } from '@/features/adaptive-layout/PaneContext';
 import {
   isRichTextNativeAvailable,
   type RichContentLoadingPhase,
@@ -99,12 +99,6 @@ interface AnswerDetailViewProps {
   isPreloading?: boolean;
 }
 
-interface AnswerDeleteScope {
-  id: string;
-  sessionVersion: number;
-  scopeVersion: number | undefined;
-}
-
 export const AnswerDetailView = ({
   id,
   readSession,
@@ -122,7 +116,6 @@ export const AnswerDetailView = ({
   isPreloading = false,
 }: AnswerDetailViewProps) => {
   const router = useRouter();
-  const navigation = useNavigation();
   const sessionVersion = useAuthStore(() => getAuthSessionVersion());
   const insets = useSafeAreaInsets();
   const actionBarBottom = getContentActionBarBottom(insets.bottom);
@@ -207,7 +200,7 @@ export const AnswerDetailView = ({
   );
   const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
   const lineHeightScale = useSettingsStore((state) => state.lineHeightScale);
-  const dimensions = usePaneDimensions();
+  const dimensions = useWindowDimensions();
   const waitForNativeLayout =
     richContentRenderer === 'native-v2' && isRichTextNativeAvailable();
   const shouldRenderBody =
@@ -380,36 +373,14 @@ export const AnswerDetailView = ({
     successMessage: (isActive) => (isActive ? '已取消关注' : '已关注'),
   });
 
-  const deleteScope = React.useMemo<AnswerDeleteScope>(
-    () => ({ id, sessionVersion, scopeVersion }),
-    [id, sessionVersion, scopeVersion],
-  );
-  const currentDeleteScope = useRef<AnswerDeleteScope | null>(deleteScope);
-  React.useLayoutEffect(() => {
-    currentDeleteScope.current = deleteScope;
-    return () => {
-      if (currentDeleteScope.current === deleteScope)
-        currentDeleteScope.current = null;
-    };
-  }, [deleteScope]);
-  const isCurrentDelete = (attempt: AnswerDeleteScope) =>
-    currentDeleteScope.current === attempt &&
-    attempt.sessionVersion === getAuthSessionVersion() &&
-    (!activeAnswerId || activeAnswerId.value === attempt.id) &&
-    (!activeScopeVersion || activeScopeVersion.value === attempt.scopeVersion);
   const deleteMutation = useMutation({
-    mutationFn: (attempt: AnswerDeleteScope) => deleteAnswer(attempt.id),
-    onSuccess: (_data, attempt) => {
-      if (!isCurrentDelete(attempt)) return;
+    mutationFn: () => deleteAnswer(id),
+    onSuccess: () => {
       Alert.alert('删除成功', '你的回答已删除喵！');
-      // Dispatch from this route, so a newer list/detail is never popped.
-      const target = navigation.getState()?.key;
-      if (target) navigation.dispatch({ type: 'GO_BACK', target });
+      router.back();
     },
-    onError: (err: unknown, attempt) => {
-      if (isCurrentDelete(attempt))
-        Alert.alert('删除失败', getZhihuErrorMessage(err) || '无法删除回答');
-    },
+    onError: (err: unknown) =>
+      Alert.alert('删除失败', getZhihuErrorMessage(err) || '无法删除回答'),
   });
 
   const handleDelete = () => {
@@ -418,9 +389,7 @@ export const AnswerDetailView = ({
       {
         text: '确认删除',
         style: 'destructive',
-        onPress: () => {
-          if (isCurrentDelete(deleteScope)) deleteMutation.mutate(deleteScope);
-        },
+        onPress: () => deleteMutation.mutate(),
       },
     ]);
   };

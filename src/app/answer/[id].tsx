@@ -1,10 +1,4 @@
-import {
-  Stack,
-  useLocalSearchParams,
-  useNavigation,
-  useRouter,
-} from 'expo-router';
-import type { NativeStackNavigationProp } from 'expo-router/native-stack';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   useCallback,
   useEffect,
@@ -24,7 +18,6 @@ import { AnswerPreviewList } from '@/components/AnswerPreviewList';
 import { DetailNavigationHeader } from '@/components/DetailNavigationHeader';
 import { ShareMenu } from '@/components/ShareMenu';
 import { View } from '@/components/Themed';
-import { useIsTwoPaneLayout } from '@/features/adaptive-layout/PaneContext';
 import { useAnswerDetailQuery } from '@/hooks/useAnswerDetailQuery';
 import { useAnswerReadSession } from '@/hooks/useAnswerDetailRead';
 import { useAnswerHeaderState } from '@/hooks/useAnswerHeaderState';
@@ -73,14 +66,7 @@ function AnswerDetailScreen() {
   }>();
   const { id, questionId: propQuestionId, sortBy = 'default' } = params;
   const answerContext = getAnswerReadingContext(params);
-  const twoPane = useIsTwoPaneLayout();
   const router = useRouter();
-  const navigation =
-    useNavigation<
-      NativeStackNavigationProp<{
-        'answer/[id]': { id: string; questionId?: string; title?: string };
-      }>
-    >();
 
   // 锁定初始 ID，避免滑动时 URL 参数改变导致重新触发 top-level loading
   const [initialEntry] = useState({
@@ -341,7 +327,7 @@ function AnswerDetailScreen() {
     headerState.restore(answerId);
     setSelection({ pagerKey, answerId });
     if (answerId !== currentId)
-      navigation.setParams(
+      router.setParams(
         isQuestionSource
           ? { id: answerId }
           : {
@@ -405,7 +391,6 @@ function AnswerDetailScreen() {
         key={pagerKey}
         style={{ flex: 1 }}
         initialPage={initialPage}
-        scrollEnabled={!twoPane}
         offscreenPageLimit={1}
         onLayout={handlePagerLayout}
         onPageScrollStateChanged={(event) => {

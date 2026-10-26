@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import {
   useAnimatedStyle,
   useSharedValue,
@@ -16,8 +17,6 @@ import { ContentActionButton } from '@/components/ContentActionButton';
 import { MoreActionsButton } from '@/components/MoreActionsButton';
 import { SegmentedVoteCapsule } from '@/components/SegmentedVoteCapsule';
 import { Text, useRuntimeThemeColors, View } from '@/components/Themed';
-import { usePaneDimensions } from '@/features/adaptive-layout/PaneContext';
-import { usePaneRouter as useRouter } from '@/features/adaptive-layout/usePaneRouter';
 
 interface AnswerPreviewFloatingBarProps {
   answer: ZhihuPreviewAnswerMetadata | null;
@@ -38,7 +37,7 @@ export function AnswerPreviewFloatingBar({
 }: AnswerPreviewFloatingBarProps) {
   const router = useRouter();
   const colors = useRuntimeThemeColors();
-  const { width, fontScale } = usePaneDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const compact = width / fontScale < 400;
   const showCommentCount = width / fontScale >= 360;
   const shown = visible && answer !== null;
