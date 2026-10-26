@@ -10,7 +10,6 @@ export default function NativeTabLayout() {
   const visibleTabs = useSettingsStore((state) => state.visibleTabs);
   const tintColor = useThemeColor({}, 'primary');
   const inactiveColor = useThemeColor({}, 'textSecondary');
-  const surfaceColor = useThemeColor({}, 'surface');
   const minimizeBehavior = undefined;
 
   if (!useNativeIOSBottomTabs) {
@@ -44,10 +43,7 @@ export default function NativeTabLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger
-        name="profile"
-        contentStyle={{ backgroundColor: surfaceColor }}
-      >
+      <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Label>我的</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'person', selected: 'person.fill' }}

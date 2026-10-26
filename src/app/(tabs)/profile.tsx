@@ -282,8 +282,6 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
   return (
     <PullToRefreshScrollView
       className="flex-1"
-      bounces={false}
-      alwaysBounceVertical
       enabled={isActive}
       indicatorTop={insets.top + 10}
       onRefresh={() => void refreshProfileManually()}
