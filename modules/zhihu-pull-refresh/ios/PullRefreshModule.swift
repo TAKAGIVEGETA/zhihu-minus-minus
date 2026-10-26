@@ -19,6 +19,10 @@ public final class PullRefreshModule: Module {
         view.setRefreshing(refreshing)
       }
 
+      Prop("containerColor") { (view: PullRefreshView, color: UIColor?) in
+        view.setContainerColor(color)
+      }
+
       Prop("threshold") { (view: PullRefreshView, threshold: Double) in
         view.setThreshold(threshold)
       }

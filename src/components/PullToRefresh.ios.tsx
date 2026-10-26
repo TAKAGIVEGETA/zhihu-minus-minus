@@ -161,12 +161,13 @@ export function PullToRefresh({
       <AnimatedPullRefreshNativeView
         enabled={enabled}
         hapticsEnabled={hapticsEnabled}
+        containerColor={backgroundColor}
         holdDistance={REFRESH_HOLD_DISTANCE}
         maxPullDistance={MAX_PULL_DISTANCE}
         onPull={pullHandler}
         onRefreshTriggered={handleRefreshTriggered}
         refreshing={refreshing}
-        style={[styles.content, { backgroundColor }]}
+        style={styles.content}
         threshold={PULL_THRESHOLD}
       >
         <View collapsable={false} style={styles.content}>

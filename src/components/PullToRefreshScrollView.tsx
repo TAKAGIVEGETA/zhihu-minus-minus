@@ -37,7 +37,9 @@ export function PullToRefreshScrollView({
       indicatorColor={indicatorColor}
       indicatorTrackColor={indicatorTrackColor}
     >
-      <ScrollView {...props}>{children}</ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false} {...props}>
+        {children}
+      </ScrollView>
     </PullToRefresh>
   );
 }

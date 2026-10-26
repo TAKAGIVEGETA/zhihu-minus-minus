@@ -14,7 +14,6 @@ import {
   voteContent,
 } from '@/api/zhihu';
 import { updateContentInteractionCaches } from '@/utils/contentCache';
-import { ImpactFeedbackStyle, impactAsync } from '@/utils/haptics';
 import { showToast } from '@/utils/toast';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
 import { BouncyButton } from './BouncyButton';
@@ -78,10 +77,6 @@ export const LikeButton = ({
   const handlePress = async () => {
     if (pendingTargetsRef.current.has(identity)) return;
     pendingTargetsRef.current.add(identity);
-
-    if (hapticFeedback) {
-      void impactAsync(ImpactFeedbackStyle.Medium);
-    }
 
     scale.value = withSequence(
       withTiming(1.4, { duration: 100 }),
@@ -153,6 +148,7 @@ export const LikeButton = ({
           : undefined
       }
       accessibilityState={{ busy: loading, selected: isUpvoted }}
+      hapticFeedback={hapticFeedback}
       onPress={handlePress}
       disabled={loading}
       className={

@@ -1,6 +1,5 @@
 import { Slot } from 'expo-router';
 import { NativeTabs } from 'expo-router/native-tabs';
-import { Platform } from 'react-native';
 import { useThemeColor } from '@/components/Themed';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
@@ -11,8 +10,8 @@ export default function NativeTabLayout() {
   const visibleTabs = useSettingsStore((state) => state.visibleTabs);
   const tintColor = useThemeColor({}, 'primary');
   const inactiveColor = useThemeColor({}, 'textSecondary');
-  const minimizeBehavior =
-    Number(Platform.Version) >= 26 ? 'onScrollDown' : undefined;
+  const surfaceColor = useThemeColor({}, 'surface');
+  const minimizeBehavior = undefined;
 
   if (!useNativeIOSBottomTabs) {
     return <Slot />;
@@ -45,7 +44,10 @@ export default function NativeTabLayout() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="profile">
+      <NativeTabs.Trigger
+        name="profile"
+        contentStyle={{ backgroundColor: surfaceColor }}
+      >
         <NativeTabs.Trigger.Label>我的</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'person', selected: 'person.fill' }}

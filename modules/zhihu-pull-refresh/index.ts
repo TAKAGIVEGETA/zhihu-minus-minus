@@ -17,6 +17,7 @@ interface PullRefreshNativeViewProps extends ViewProps {
   enabled: boolean;
   hapticsEnabled: boolean;
   refreshing: boolean;
+  containerColor?: string;
   threshold: number;
   holdDistance: number;
   maxPullDistance: number;

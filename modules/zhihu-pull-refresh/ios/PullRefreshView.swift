@@ -18,6 +18,7 @@ public final class PullRefreshView: ExpoView, UIGestureRecognizerDelegate {
   private var pullEnabled = true
   private var hapticsEnabled = true
   private var refreshing = false
+  private var containerColor: UIColor?
   private var refreshLatched = false
   private var thresholdHapticArmed = true
   private var lastHapticAt = 0.0
@@ -27,7 +28,7 @@ public final class PullRefreshView: ExpoView, UIGestureRecognizerDelegate {
     pullGesture = UIPanGestureRecognizer()
     super.init(appContext: appContext)
 
-    clipsToBounds = false
+    clipsToBounds = true
     pullGesture.addTarget(self, action: #selector(handlePan(_:)))
     pullGesture.delegate = self
     pullGesture.cancelsTouchesInView = false
@@ -79,6 +80,12 @@ public final class PullRefreshView: ExpoView, UIGestureRecognizerDelegate {
       refreshLatched = false
       animatePull(to: 0)
     }
+  }
+
+  func setContainerColor(_ color: UIColor?) {
+    containerColor = color
+    backgroundColor = color
+    clipsToBounds = true
   }
 
   func setThreshold(_ value: Double) {

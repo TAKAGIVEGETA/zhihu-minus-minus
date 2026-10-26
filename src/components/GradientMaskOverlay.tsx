@@ -1,10 +1,20 @@
-import MaskedView from '@react-native-masked-view/masked-view';
+import MaskedViewModule from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import type { ComponentType, PropsWithChildren, ReactElement } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { effects } from '@/constants/designTokens';
 import { useThemeColor } from './Themed';
+
+type MaskedViewProps = PropsWithChildren<{
+  style?: StyleProp<ViewStyle>;
+  maskElement: ReactElement;
+}>;
+
+const MaskedView =
+  MaskedViewModule as unknown as ComponentType<MaskedViewProps>;
 
 export function GradientMaskOverlay({ isDark }: { isDark: boolean }) {
   const insets = useSafeAreaInsets();
