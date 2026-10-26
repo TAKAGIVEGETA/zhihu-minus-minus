@@ -11,6 +11,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { ScrollViewMarker } from 'react-native-screens/experimental';
 import Svg, { Circle } from 'react-native-svg';
 import {
   type PullRefreshNativeEvent,
@@ -131,9 +132,12 @@ export function PullToRefresh({
         style={styles.content}
         threshold={PULL_THRESHOLD}
       >
-        <View collapsable={false} style={styles.content}>
+        <ScrollViewMarker
+          style={styles.content}
+          scrollEdgeEffects={{ bottom: 'hidden' }}
+        >
           {children}
-        </View>
+        </ScrollViewMarker>
       </AnimatedPullRefreshNativeView>
 
       <Animated.View

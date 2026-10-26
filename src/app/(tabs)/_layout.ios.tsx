@@ -20,6 +20,9 @@ export default function NativeTabLayout() {
     <NativeTabs
       minimizeBehavior={minimizeBehavior}
       tintColor={tintColor}
+      backgroundColor="transparent"
+      blurEffect="none"
+      shadowColor="transparent"
       iconColor={{ default: inactiveColor, selected: tintColor }}
       labelStyle={{
         default: { color: inactiveColor },

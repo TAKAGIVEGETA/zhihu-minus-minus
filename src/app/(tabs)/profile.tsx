@@ -289,7 +289,6 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
       backgroundColor={Colors[colorScheme].surface}
       indicatorColor={accentColor}
       indicatorTrackColor={Colors[colorScheme].border}
-      contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
     >
       {/* 顶部用户信息区 */}
       <AuthStorageNotice />
