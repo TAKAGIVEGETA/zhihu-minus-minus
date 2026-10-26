@@ -289,13 +289,14 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
       backgroundColor={Colors[colorScheme].surface}
       indicatorColor={accentColor}
       indicatorTrackColor={Colors[colorScheme].border}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
     >
       {/* 顶部用户信息区 */}
       <AuthStorageNotice />
       <View
         type="surface"
         className="px-5 pb-5 rounded-b-[24px]"
-        style={{ paddingTop: insets.top + 20 }}
+        style={{ paddingTop: 20 }}
       >
         {me ? (
           <BouncyButton
@@ -504,8 +505,6 @@ export default function ProfileScreen({ isActive = true }: ProfileScreenProps) {
           </Text>
         </BouncyButton>
       )}
-
-      <View className="h-[100px] bg-transparent" />
 
       <BottomSheet
         visible={accountModalVisible}

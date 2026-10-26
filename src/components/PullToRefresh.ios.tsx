@@ -119,6 +119,23 @@ export function PullToRefresh({
 
   return (
     <View style={[styles.root, { backgroundColor }]}>
+      <AnimatedPullRefreshNativeView
+        enabled={enabled}
+        hapticsEnabled={hapticsEnabled}
+        containerColor={backgroundColor}
+        holdDistance={REFRESH_HOLD_DISTANCE}
+        maxPullDistance={MAX_PULL_DISTANCE}
+        onPull={pullHandler}
+        onRefreshTriggered={handleRefreshTriggered}
+        refreshing={refreshing}
+        style={styles.content}
+        threshold={PULL_THRESHOLD}
+      >
+        <View collapsable={false} style={styles.content}>
+          {children}
+        </View>
+      </AnimatedPullRefreshNativeView>
+
       <Animated.View
         pointerEvents="none"
         style={[styles.indicator, { top: indicatorTop }, indicatorStyle]}
@@ -157,23 +174,6 @@ export function PullToRefresh({
           />
         </Svg>
       </Animated.View>
-
-      <AnimatedPullRefreshNativeView
-        enabled={enabled}
-        hapticsEnabled={hapticsEnabled}
-        containerColor={backgroundColor}
-        holdDistance={REFRESH_HOLD_DISTANCE}
-        maxPullDistance={MAX_PULL_DISTANCE}
-        onPull={pullHandler}
-        onRefreshTriggered={handleRefreshTriggered}
-        refreshing={refreshing}
-        style={styles.content}
-        threshold={PULL_THRESHOLD}
-      >
-        <View collapsable={false} style={styles.content}>
-          {children}
-        </View>
-      </AnimatedPullRefreshNativeView>
     </View>
   );
 }
