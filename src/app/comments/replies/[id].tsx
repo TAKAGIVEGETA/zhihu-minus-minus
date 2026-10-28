@@ -289,6 +289,7 @@ export default function ReplyDetailScreen() {
                   voted={item.relationship?.voting || 0}
                   type="comments"
                   variant="ghost"
+                  hapticFeedback
                 />
                 <BouncyButton
                   disabled={mutation.isPending}
@@ -406,6 +407,7 @@ export default function ReplyDetailScreen() {
                   voted={parentComment.relationship?.voting || 0}
                   type="comments"
                   variant="ghost"
+                  hapticFeedback
                 />
                 <BouncyButton
                   disabled={mutation.isPending}

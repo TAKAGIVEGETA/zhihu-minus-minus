@@ -279,6 +279,7 @@ export default function CommentScreen() {
                   voted={item.relationship?.voting || 0}
                   type="comments"
                   variant="ghost"
+                  hapticFeedback
                 />
                 <BouncyButton
                   disabled={!canPostComment || mutation.isPending}
