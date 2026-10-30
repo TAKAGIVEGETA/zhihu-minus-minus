@@ -16,6 +16,7 @@ import {
   BackHandler,
   Dimensions,
   Keyboard,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,9 +30,9 @@ import {
   getVisiblePanes,
 } from '../src/features/adaptive-layout/layout';
 import {
+  useFixedHeaderEntryProgress,
   usePaneDimensions,
   usePaneVisible,
-  useProfileEntryProgress,
 } from '../src/features/adaptive-layout/PaneContext';
 import { usePaneRouter } from '../src/features/adaptive-layout/usePaneRouter';
 import { useRefreshAction } from '../src/hooks/useRefreshAction';
@@ -57,17 +58,23 @@ const cleanups: Record<string, number> = {};
 let finishRefresh: (() => void) | undefined;
 let profileProgress: Animated.Value | undefined;
 const profileHeaderStates: boolean[] = [];
+let streamProgress: Animated.Value | undefined;
+const streamHeaderStates: boolean[] = [];
 function Page({ name }: { name: string }) {
   const router = usePaneRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [draft, setDraft] = useState('');
   const [scroll, setScroll] = useState(0);
   const visible = usePaneVisible();
-  const entryProgress = useProfileEntryProgress();
+  const entryProgress = useFixedHeaderEntryProgress();
   const headerShown = useContext(HeaderShownContext);
   if (name === 'user') {
     profileProgress = entryProgress;
     profileHeaderStates.push(headerShown);
+  }
+  if (name === 'stream') {
+    streamProgress = entryProgress;
+    streamHeaderStates.push(headerShown);
   }
   const { width } = usePaneDimensions();
   const identity = `${name}:${id ?? 'root'}`;
@@ -170,6 +177,10 @@ async function open(initialUrl = '/', defaultHeaders = false) {
                 options={{ headerShown: false }}
               />
               <AdaptiveStack.Screen
+                name="user/[id]/stream"
+                options={{ headerShown: false }}
+              />
+              <AdaptiveStack.Screen
                 name="about"
                 options={{
                   headerRight: () => (
@@ -186,6 +197,7 @@ async function open(initialUrl = '/', defaultHeaders = false) {
       '(tabs)/index': () => <Page name="home" />,
       'answer/[id]': () => <Page name="answer" />,
       'user/[id]/index': () => <Page name="user" />,
+      'user/[id]/stream': () => <Page name="stream" />,
       'login/index': () => <Page name="login" />,
       'comments/[id]': () => <Page name="comments" />,
       'settings/index': () => <Page name="settings" />,
@@ -206,6 +218,8 @@ function appRoutes(result: Awaited<ReturnType<typeof open>>) {
 }
 
 beforeEach(async () => {
+  // Exercise the adaptive host, which remains the Android single-pane path.
+  jest.replaceProperty(Platform, 'OS', 'android');
   for (const key of Object.keys(mounts)) delete mounts[key];
   for (const key of Object.keys(cleanups)) delete cleanups[key];
   finishRefresh = undefined;
@@ -215,6 +229,8 @@ beforeEach(async () => {
   });
   await resize(1200, 800);
 });
+
+afterEach(() => jest.restoreAllMocks());
 
 test('layout projection keeps chronological history and never crosses a full-screen boundary', () => {
   const routes = [
@@ -324,6 +340,28 @@ test('opening a profile does not move or scale the whole page', async () => {
     expect(StyleSheet.flatten(profile.props.style).transform).toBeUndefined();
     expect(profileProgress).toBeDefined();
     expect(timing.mock.calls.some(([value]) => value === profileProgress)).toBe(
+      true,
+    );
+  } finally {
+    timing.mockRestore();
+  }
+});
+
+test('recent publications start without a default header and use the fixed-toolbar transition', async () => {
+  await setTwoPanes(false);
+  streamProgress = undefined;
+  streamHeaderStates.length = 0;
+  const timing = jest.spyOn(Animated, 'timing');
+  try {
+    const result = await open('/', true);
+    await testRouter.push('/user/u/stream');
+    const key = appRoutes(result).at(-1)?.key;
+    const route = screen.getByTestId(`adaptive-route-${key}-transition`);
+    expect(streamHeaderStates.length).toBeGreaterThan(0);
+    expect(streamHeaderStates.every((shown) => !shown)).toBe(true);
+    expect(StyleSheet.flatten(route.props.style).transform).toBeUndefined();
+    expect(streamProgress).toBeDefined();
+    expect(timing.mock.calls.some(([value]) => value === streamProgress)).toBe(
       true,
     );
   } finally {

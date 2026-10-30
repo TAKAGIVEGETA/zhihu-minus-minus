@@ -280,9 +280,13 @@ function RootLayout() {
                   }}
                 />
 
-                {/* 个人页有自己的顶部栏，首次渲染也不能预留默认标题栏。 */}
+                {/* 自定义顶部栏的页面首次渲染也不能预留默认标题栏。 */}
                 <Stack.Screen
                   name="user/[id]/index"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="user/[id]/stream"
                   options={{ headerShown: false }}
                 />
 

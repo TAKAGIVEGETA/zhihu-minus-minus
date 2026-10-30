@@ -1,7 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
-import { AccessibilityInfo, Animated, StyleSheet } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  Platform,
+  StyleSheet,
+} from 'react-native';
 import {
   type FeedItem,
   getMemberActivities,
@@ -334,7 +339,7 @@ test('profile entry motion affects its content while the back control stays fixe
         width: 390,
         height: 844,
         visible: true,
-        profileEntryProgress: progress,
+        fixedHeaderEntryProgress: progress,
       }}
     >
       {screen()}
@@ -396,7 +401,7 @@ test('profile opens from the card before a slow request and does not replay when
           width: 390,
           height: 844,
           visible: true,
-          profileEntryProgress: progress,
+          fixedHeaderEntryProgress: progress,
         }}
       >
         {screen()}
@@ -476,6 +481,48 @@ test('repeated profile identity parameters use the first value while loading and
   );
   expect(host.getByTestId('profile-entry-content')).toBeVisible();
   await host.unmount();
+});
+
+test('Android waits for the loaded profile header to be measured before showing tabs and list', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  client.removeQueries({ queryKey: ['user-detail', mockRoute.id] });
+  let finish: ((value: ZhihuMember) => void) | undefined;
+  jest.mocked(getMemberWithFallback).mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  try {
+    const host = await render(screen());
+    await flushQueries();
+    expect(
+      host.getByTestId('profile-initial-tabs-layout', {
+        includeHiddenElements: true,
+      }),
+    ).not.toBeVisible();
+    expect(mockListProps.get('创作')?.headerHeight).toBe(0);
+    await act(async () => finish?.(member));
+    await flushQueries();
+    expect(
+      host.getByTestId('profile-initial-tabs-layout', {
+        includeHiddenElements: true,
+      }),
+    ).not.toBeVisible();
+    await fireEvent(
+      host.getByTestId('profile-initial-tabs-layout', {
+        includeHiddenElements: true,
+      }),
+      'layout',
+      {
+        nativeEvent: { layout: { x: 0, y: 250, width: 390, height: 52 } },
+      },
+    );
+    expect(host.getByTestId('profile-initial-tabs-layout')).toBeVisible();
+    expect(mockListProps.get('创作')?.headerHeight).toBeGreaterThan(0);
+    await host.unmount();
+  } finally {
+    jest.restoreAllMocks();
+  }
 });
 
 test('a failed initial profile request replaces the placeholder with a retry', async () => {

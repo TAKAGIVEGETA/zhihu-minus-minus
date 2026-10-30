@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import type { ZhihuMember } from '@/api/zhihu';
 import { BouncyButton } from '@/components/BouncyButton';
 import { FollowButton } from '@/components/FollowButton';
+import { InitialContentReveal } from '@/components/InitialContentReveal';
 import { ProfileCover } from '@/components/profile/ProfileCover';
-import { StableAvatar } from '@/components/StableAvatar';
+import { ProfileImage } from '@/components/profile/ProfileImage';
 import { useRuntimeThemeColors } from '@/components/Themed';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { formatCount } from '@/utils/formatCount';
@@ -59,6 +60,7 @@ export function ProfileHeader({
     (description.length > 110 || description.split('\n').length > 3);
   const avatarUri = user.avatar_url || initialAvatar;
   const name = user.name || initialName || '';
+  const showLoadingDetails = Platform.OS === 'android' && isLoading;
 
   return (
     <View
@@ -86,7 +88,7 @@ export function ProfileHeader({
             accessibilityLabel={`${name || '用户'}的头像`}
           >
             {avatarUri ? (
-              <StableAvatar uri={avatarUri} style={styles.avatar} />
+              <ProfileImage uri={avatarUri} style={styles.avatar} />
             ) : (
               <Ionicons name="person" size={34} color={colors.textTertiary} />
             )}
@@ -118,128 +120,184 @@ export function ProfileHeader({
         >
           {name}
         </Text>
-        {!!user.url_token && (
-          <Text
-            pointerEvents="none"
-            style={[styles.handle, { color: colors.textSecondary }]}
-            numberOfLines={1}
-            ellipsizeMode="middle"
-          >
-            @{user.url_token}
-          </Text>
-        )}
-        {!!headline && (
-          <Text
-            pointerEvents="none"
-            style={[styles.headline, { color: colors.text }]}
-          >
-            {headline}
-          </Text>
-        )}
-        {hasDescription && (
-          <View pointerEvents="box-none" style={styles.descriptionBlock}>
+        <InitialContentReveal ready={!isLoading}>
+          {user.url_token ? (
             <Text
               pointerEvents="none"
-              style={[styles.description, { color: colors.textSecondary }]}
-              numberOfLines={
-                canExpandDescription && !isExpanded ? 3 : undefined
-              }
+              style={[styles.handle, { color: colors.textSecondary }]}
+              numberOfLines={1}
+              ellipsizeMode="middle"
             >
-              {description}
+              @{user.url_token}
             </Text>
-            {canExpandDescription && (
+          ) : showLoadingDetails ? (
+            <View
+              style={styles.loadingHandle}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <View
+                style={[
+                  styles.loadingLine,
+                  { width: '28%', backgroundColor: colors.border },
+                ]}
+              />
+            </View>
+          ) : null}
+          {headline ? (
+            <Text
+              pointerEvents="none"
+              style={[styles.headline, { color: colors.text }]}
+            >
+              {headline}
+            </Text>
+          ) : showLoadingDetails ? (
+            <View
+              style={styles.loadingHeadline}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <View
+                style={[
+                  styles.loadingLine,
+                  { width: '65%', backgroundColor: colors.border },
+                ]}
+              />
+            </View>
+          ) : null}
+          {hasDescription && (
+            <View pointerEvents="box-none" style={styles.descriptionBlock}>
+              <Text
+                pointerEvents="none"
+                style={[styles.description, { color: colors.textSecondary }]}
+                numberOfLines={
+                  canExpandDescription && !isExpanded ? 3 : undefined
+                }
+              >
+                {description}
+              </Text>
+              {canExpandDescription && (
+                <BouncyButton
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: isExpanded }}
+                  onPress={() =>
+                    setExpandedProfile(isExpanded ? null : identity)
+                  }
+                  style={styles.expandButton}
+                >
+                  <Text style={[styles.expandText, { color: colors.link }]}>
+                    {isExpanded ? '收起简介' : '展开简介'}
+                  </Text>
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={13}
+                    color={colors.link}
+                  />
+                </BouncyButton>
+              )}
+            </View>
+          )}
+          {showLoadingDetails && !hasDescription ? (
+            <View
+              style={styles.loadingDescription}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <View
+                style={[
+                  styles.loadingLine,
+                  { width: '85%', backgroundColor: colors.border },
+                ]}
+              />
+              <View
+                style={[
+                  styles.loadingLine,
+                  { width: '52%', backgroundColor: colors.border },
+                ]}
+              />
+            </View>
+          ) : null}
+
+          {isLoading ? (
+            <View
+              pointerEvents="none"
+              style={styles.stats}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <View style={styles.stat} />
+            </View>
+          ) : (
+            <View pointerEvents="box-none" style={styles.stats}>
               <BouncyButton
                 accessibilityRole="button"
-                accessibilityState={{ expanded: isExpanded }}
-                onPress={() => setExpandedProfile(isExpanded ? null : identity)}
-                style={styles.expandButton}
+                accessibilityLabel={`${user.following_count || 0} 关注`}
+                onPress={onFollowing}
+                style={styles.stat}
               >
-                <Text style={[styles.expandText, { color: colors.link }]}>
-                  {isExpanded ? '收起简介' : '展开简介'}
+                <Text
+                  style={[styles.statText, { color: colors.textSecondary }]}
+                >
+                  <Text style={[styles.statValue, { color: colors.text }]}>
+                    {formatCount(user.following_count)}
+                  </Text>{' '}
+                  关注
                 </Text>
-                <Ionicons
-                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={13}
-                  color={colors.link}
-                />
               </BouncyButton>
-            )}
-          </View>
-        )}
-
-        {isLoading ? (
-          <View
-            pointerEvents="none"
-            style={styles.stats}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <View style={styles.stat} />
-          </View>
-        ) : (
-          <View pointerEvents="box-none" style={styles.stats}>
-            <BouncyButton
-              accessibilityRole="button"
-              accessibilityLabel={`${user.following_count || 0} 关注`}
-              onPress={onFollowing}
-              style={styles.stat}
-            >
-              <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                <Text style={[styles.statValue, { color: colors.text }]}>
-                  {formatCount(user.following_count)}
-                </Text>{' '}
-                关注
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              accessibilityRole="button"
-              accessibilityLabel={`${user.follower_count || 0} 关注者`}
-              onPress={onFollowers}
-              style={styles.stat}
-            >
-              <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                <Text style={[styles.statValue, { color: colors.text }]}>
-                  {formatCount(user.follower_count)}
-                </Text>{' '}
-                关注者
-              </Text>
-            </BouncyButton>
-            <View pointerEvents="none" style={styles.stat}>
-              <Text
-                style={[styles.statText, { color: colors.textSecondary }]}
-                accessibilityLabel={`${user.voteup_count || 0} 获赞`}
+              <BouncyButton
+                accessibilityRole="button"
+                accessibilityLabel={`${user.follower_count || 0} 关注者`}
+                onPress={onFollowers}
+                style={styles.stat}
               >
-                <Text style={[styles.statValue, { color: colors.text }]}>
-                  {formatCount(user.voteup_count)}
-                </Text>{' '}
-                获赞
-              </Text>
+                <Text
+                  style={[styles.statText, { color: colors.textSecondary }]}
+                >
+                  <Text style={[styles.statValue, { color: colors.text }]}>
+                    {formatCount(user.follower_count)}
+                  </Text>{' '}
+                  关注者
+                </Text>
+              </BouncyButton>
+              <View pointerEvents="none" style={styles.stat}>
+                <Text
+                  style={[styles.statText, { color: colors.textSecondary }]}
+                  accessibilityLabel={`${user.voteup_count || 0} 获赞`}
+                >
+                  <Text style={[styles.statValue, { color: colors.text }]}>
+                    {formatCount(user.voteup_count)}
+                  </Text>{' '}
+                  获赞
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {!isMe && (user.mutual_followees_count || 0) > 0 && (
-          <BouncyButton
-            accessibilityRole="button"
-            accessibilityLabel={`${user.mutual_followees_count} 位共同关注`}
-            onPress={onMutual}
-            style={styles.mutual}
-          >
-            <Ionicons
-              name="people-outline"
-              size={16}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.mutualText, { color: colors.textSecondary }]}>
-              {formatCount(user.mutual_followees_count)} 位共同关注
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={13}
-              color={colors.textTertiary}
-            />
-          </BouncyButton>
-        )}
+          {!isMe && (user.mutual_followees_count || 0) > 0 && (
+            <BouncyButton
+              accessibilityRole="button"
+              accessibilityLabel={`${user.mutual_followees_count} 位共同关注`}
+              onPress={onMutual}
+              style={styles.mutual}
+            >
+              <Ionicons
+                name="people-outline"
+                size={16}
+                color={colors.textSecondary}
+              />
+              <Text
+                style={[styles.mutualText, { color: colors.textSecondary }]}
+              >
+                {formatCount(user.mutual_followees_count)} 位共同关注
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={13}
+                color={colors.textTertiary}
+              />
+            </BouncyButton>
+          )}
+        </InitialContentReveal>
       </View>
     </View>
   );
@@ -274,6 +332,22 @@ function createStyles(fontScale: number, lineHeightScale: number) {
     name: { ...type(24, 30), fontWeight: '800', letterSpacing: -0.4 },
     handle: { ...type(13, 18), marginTop: 2 },
     headline: { ...type(14, 22), marginTop: 10 },
+    loadingLine: { height: 8 * fontScale, borderRadius: 4, opacity: 0.45 },
+    loadingHandle: {
+      height: type(13, 18).lineHeight,
+      marginTop: 2,
+      justifyContent: 'center',
+    },
+    loadingHeadline: {
+      height: type(14, 22).lineHeight,
+      marginTop: 10,
+      justifyContent: 'center',
+    },
+    loadingDescription: {
+      height: type(13, 20).lineHeight * 2,
+      marginTop: 7,
+      justifyContent: 'space-around',
+    },
     descriptionBlock: { marginTop: 7 },
     description: type(13, 20),
     expandButton: {

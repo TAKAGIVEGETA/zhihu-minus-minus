@@ -10,6 +10,7 @@ import {
   Alert,
   Animated,
   View as NativeView,
+  Platform,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -63,7 +64,7 @@ import { StableAvatar } from '@/components/StableAvatar';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { useProfileEntryProgress } from '@/features/adaptive-layout/PaneContext';
+import { useFixedHeaderEntryProgress } from '@/features/adaptive-layout/PaneContext';
 import { useUserAnswersVotedByMe } from '@/hooks/useUserAnswersVotedByMe';
 import { useUserColumns } from '@/hooks/useUserColumns';
 import { useUserCreations } from '@/hooks/useUserCreations';
@@ -186,7 +187,7 @@ export default function UserDetailScreen() {
 function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
-  const profileEntry = useProfileEntryProgress();
+  const profileEntry = useFixedHeaderEntryProgress();
   const profileEntryStyle = useMemo(
     () =>
       profileEntry && {
@@ -220,6 +221,9 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
   const [followLoading, setFollowLoading] = useState(false);
 
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [initialHeaderReady, setInitialHeaderReady] = useState(
+    Platform.OS !== 'android',
+  );
   const [tabBarHeight, setTabBarHeight] = useState(52);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [navigationRowHeight, setNavigationRowHeight] = useState(56);
@@ -1105,7 +1109,7 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
                                   ),
                           ]),
                       }}
-                      headerHeight={headerHeight}
+                      headerHeight={initialHeaderReady ? headerHeight : 0}
                       collapseDistance={collapseDistance}
                       viewportHeight={viewportHeight}
                       hideInitialLoadingIndicator={isUserLoading && !user}
@@ -1185,7 +1189,34 @@ function UserProfileScreen({ params }: { params: ProfileRouteParams }) {
             ]}
           >
             {renderHeader()}
-            {renderTabsSelector()}
+            {Platform.OS === 'android' ? (
+              <NativeView
+                key={user ? 'loaded' : 'loading'}
+                testID="profile-initial-tabs-layout"
+                pointerEvents={initialHeaderReady ? 'auto' : 'none'}
+                accessibilityElementsHidden={!initialHeaderReady}
+                importantForAccessibility={
+                  initialHeaderReady ? 'auto' : 'no-hide-descendants'
+                }
+                style={{ opacity: initialHeaderReady ? 1 : 0 }}
+                onLayout={(event) => {
+                  if (!user || initialHeaderReady) return;
+                  const { y, height } = event.nativeEvent.layout;
+                  if (
+                    Number.isFinite(y) &&
+                    Number.isFinite(height) &&
+                    height > 0
+                  ) {
+                    setHeaderHeight(y + height);
+                    setInitialHeaderReady(true);
+                  }
+                }}
+              >
+                {renderTabsSelector()}
+              </NativeView>
+            ) : (
+              renderTabsSelector()
+            )}
           </Reanimated.View>
         </Animated.View>
       )}

@@ -1,6 +1,10 @@
 import {
+  createNativeStackProps,
   createStandardRouterNavigator,
   type Href,
+  IsWithinNativeNavigator,
+  type NativeStackDescriptorMap,
+  NativeStackView,
   type NavigatorContentProps,
   Stack,
 } from 'expo-router';
@@ -67,8 +71,32 @@ type ContentProps = NavigatorContentProps<
   {
     dispatchNavigation: (action: NavigationAction) => void;
     navigatorKey: string;
+    isPreloaded: (key: string) => boolean;
+    isRemovalPrevented: (key: string) => boolean;
+    pop: (count: number, sourceRouteKey: string) => void;
   }
 >;
+
+function StackContent(props: ContentProps) {
+  const enabled = useSettingsStore((s) => s.enableLargeScreenLayout);
+  if (Platform.OS === 'ios' && !enabled) {
+    // Expo Router passes its full navigation descriptors at runtime; the
+    // standard navigator type exposes only their shared options/render subset.
+    return (
+      <IsWithinNativeNavigator.Provider value>
+        <NativeStackView
+          state={props.state}
+          descriptors={props.descriptors as NativeStackDescriptorMap}
+          emit={props.emitter.emit}
+          isPreloaded={props.isPreloaded}
+          isRemovalPrevented={props.isRemovalPrevented}
+          pop={props.pop}
+        />
+      </IsWithinNativeNavigator.Provider>
+    );
+  }
+  return <AdaptiveStackContent {...props} />;
+}
 
 export function AdaptiveStackContent({
   state,
@@ -186,7 +214,10 @@ export function AdaptiveStackContent({
                 height={height}
                 visible={visible}
                 active={route.key === activeKey && !isList}
-                expand={route.name !== 'user/[id]/index'}
+                expand={
+                  route.name !== 'user/[id]/index' &&
+                  route.name !== 'user/[id]/stream'
+                }
                 transitionSequence={transition.current.sequence}
               >
                 <AdaptiveScreen
@@ -312,7 +343,7 @@ function RoutePane({
       visible,
       routeKey,
       twoPane,
-      profileEntryProgress: expand ? undefined : progress,
+      fixedHeaderEntryProgress: expand ? undefined : progress,
     }),
     [frame.width, frame.height, visible, routeKey, twoPane, expand, progress],
   );
@@ -432,12 +463,13 @@ function AdaptiveScreen({
 }
 
 export const TwoPaneStack = createStandardRouterNavigator(
-  AdaptiveStackContent,
+  StackContent,
   PaneStackRouter,
   {
-    createProps: ({ dispatch, state }) => ({
-      dispatchNavigation: dispatch,
-      navigatorKey: state.key,
+    createProps: (args) => ({
+      ...createNativeStackProps(args),
+      dispatchNavigation: args.dispatch,
+      navigatorKey: args.state.key,
     }),
   },
 );

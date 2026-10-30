@@ -6,6 +6,7 @@ import {
   Alert,
   type ScrollViewInstance as NativeScrollView,
   type ViewInstance as NativeView,
+  Platform,
   View as RawView,
 } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -37,6 +38,7 @@ import { ContentActionButton } from '@/components/ContentActionButton';
 import { ContentRelationshipNotice } from '@/components/ContentRelationshipNotice';
 import { useDetailNavigationHeight } from '@/components/DetailNavigationHeader';
 import { FollowButton } from '@/components/FollowButton';
+import { InitialContentReveal } from '@/components/InitialContentReveal';
 import { MoreActionsButton } from '@/components/MoreActionsButton';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { ReadingProgressNotice } from '@/components/ReadingProgressNotice';
@@ -72,10 +74,6 @@ import { calculateDetailHeaderAppearance } from '@/utils/detailHeaderAppearance'
 import { getZhihuErrorMessage, getZhihuErrorStatus } from '@/utils/zhihuError';
 
 const slowTransition = SharedTransition.duration(600);
-
-function renderContentPlaceholder(phase: RichContentLoadingPhase) {
-  return <AnswerLoadingPlaceholder phase={phase} />;
-}
 
 export interface AnswerEndorsementSource {
   answerId: string;
@@ -209,6 +207,16 @@ export const AnswerDetailView = ({
   const fontSizeScale = useSettingsStore((state) => state.fontSizeScale);
   const lineHeightScale = useSettingsStore((state) => state.lineHeightScale);
   const dimensions = usePaneDimensions();
+  // Reserve the visible reading area during the fetch and native layout so
+  // the footer does not jump into view before the measured body replaces it.
+  const placeholderHeight =
+    Platform.OS === 'android' ? Math.max(200, dimensions.height * 0.55) : 200;
+  const renderContentPlaceholder = React.useCallback(
+    (phase: RichContentLoadingPhase) => (
+      <AnswerLoadingPlaceholder phase={phase} minHeight={placeholderHeight} />
+    ),
+    [placeholderHeight],
+  );
   const waitForNativeLayout =
     richContentRenderer === 'native-v2' && isRichTextNativeAvailable();
   const shouldRenderBody =
@@ -642,7 +650,10 @@ export const AnswerDetailView = ({
             </View>
 
             {isAnswerLoading && !answer ? (
-              <AnswerLoadingPlaceholder phase="fetching-answer" />
+              <AnswerLoadingPlaceholder
+                phase="fetching-answer"
+                minHeight={placeholderHeight}
+              />
             ) : isError && !answer && getZhihuErrorStatus(error) !== 404 ? (
               <QueryErrorView
                 message={isGuest ? getZhihuErrorMessage(error) : '回答加载失败'}
@@ -686,17 +697,19 @@ export const AnswerDetailView = ({
                   enabled={isFocused && Boolean(answer)}
                   voteCount={answer?.voteup_count}
                 />
-                <ZhihuContent
-                  suppressDoubleTapSelection={isDoubleTapEnabled}
-                  content={answer?.content || ''}
-                  segmentInfos={answer?.segment_infos}
-                  linkCardInfo={answer?.link_card_info}
-                  objectId={id}
-                  type="answer"
-                  onRefresh={refetch}
-                  renderPlaceholder={renderContentPlaceholder}
-                  onLayoutReady={handleContentLayoutReady}
-                />
+                <InitialContentReveal key={id} ready={contentLayoutReady}>
+                  <ZhihuContent
+                    suppressDoubleTapSelection={isDoubleTapEnabled}
+                    content={answer?.content || ''}
+                    segmentInfos={answer?.segment_infos}
+                    linkCardInfo={answer?.link_card_info}
+                    objectId={id}
+                    type="answer"
+                    onRefresh={refetch}
+                    renderPlaceholder={renderContentPlaceholder}
+                    onLayoutReady={handleContentLayoutReady}
+                  />
+                </InitialContentReveal>
                 {isGuest &&
                 (answer?.content_need_truncated ||
                   answer?.answer_type?.toUpperCase() === 'PAID' ||

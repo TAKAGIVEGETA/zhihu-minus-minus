@@ -69,7 +69,10 @@ export function NavigationInteractionSettings() {
           />
         </SettingItem>
         <Text type="secondary" style={styles.feedbackHint}>
-          试验性功能，布局和手势仍在完善。开启后并排显示列表与详情，不限制屏幕大小或横竖屏。长按两栏之间再拖动可调整栏宽，按住时显示指示器。关闭后恢复单栏并保留当前页面与返回记录。
+          试验性功能，布局和手势仍在完善。开启后并排显示列表与详情，不限制屏幕大小或横竖屏。长按两栏之间再拖动可调整栏宽，按住时显示指示器。切换时保留返回记录。
+          {Platform.OS === 'ios'
+            ? ' iOS 切换布局时页面会重新加载，滚动位置等临时状态可能重置。'
+            : ' 切换时保留当前页面状态。'}
         </Text>
       </Section>
 

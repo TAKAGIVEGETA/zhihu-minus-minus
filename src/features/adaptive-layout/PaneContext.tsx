@@ -19,7 +19,7 @@ export const PaneContext = createContext<{
   visible: boolean;
   routeKey?: string;
   twoPane?: boolean;
-  profileEntryProgress?: Animated.Value;
+  fixedHeaderEntryProgress?: Animated.Value;
 } | null>(null);
 
 /** Modal contents use window dimensions but retain their originating visibility. */
@@ -40,9 +40,9 @@ export function usePaneVisible(): boolean {
   return (pane?.visible ?? true) && ancestorVisible;
 }
 
-/** Profile content and its route use the same entrance animation clock. */
-export function useProfileEntryProgress(): Animated.Value | undefined {
-  return useContext(PaneContext)?.profileEntryProgress;
+/** Screens with fixed toolbars can animate their content with the route clock. */
+export function useFixedHeaderEntryProgress(): Animated.Value | undefined {
+  return useContext(PaneContext)?.fixedHeaderEntryProgress;
 }
 
 export function useIsTwoPaneLayout(): boolean {
