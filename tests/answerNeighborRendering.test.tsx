@@ -116,6 +116,10 @@ jest.mock('../src/api/zhihu/member', () => ({
 }));
 jest.mock('expo-router', () => ({
   Stack: { Screen: () => null },
+  useNavigation: () => ({
+    getState: () => ({ key: 'synthetic-answer-navigation' }),
+    dispatch: jest.fn(),
+  }),
   useLocalSearchParams: () => ({
     id: mockEntryAnswerId,
     questionId: '7',
