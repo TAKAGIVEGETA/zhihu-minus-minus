@@ -264,7 +264,7 @@ test('a server count replaces a string count and reaches the external callback',
   });
 });
 
-test('the upvote segment opts into haptics when pressed', async () => {
+test('the upvote segment triggers haptics when pressed', async () => {
   jest.mocked(voteContent).mockResolvedValueOnce({ voted: 1, voteCount: 12 });
   const host = await render(
     <QueryClientProvider client={createClient()}>
@@ -276,6 +276,6 @@ test('the upvote segment opts into haptics when pressed', async () => {
       />
     </QueryClientProvider>,
   );
-  expect(host.getAllByRole('button')[0].props.hapticFeedback).toBe(true);
-  expect(impactAsync).not.toHaveBeenCalledWith('medium');
+  await fireEvent.press(host.getAllByRole('button')[0]);
+  expect(impactAsync).toHaveBeenCalledWith('medium');
 });
