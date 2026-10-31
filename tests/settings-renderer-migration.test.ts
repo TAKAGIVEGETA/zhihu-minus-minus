@@ -30,7 +30,7 @@ beforeEach(() => {
   jest.mocked(SecureStore.getItemAsync).mockResolvedValue(null);
 });
 
-test('defaults to tiqian-super-mini with visual feedback and filtering enabled in settings version 18', () => {
+test('defaults to tiqian-super-mini with visual feedback and filtering enabled in settings version 21', () => {
   expect(useSettingsStore.getState().richContentRenderer).toBe('native-v2');
   expect(useSettingsStore.getState().enablePressFeedback).toBe(true);
   expect(useSettingsStore.getState().enableLocalFeedFilter).toBe(true);
@@ -39,7 +39,7 @@ test('defaults to tiqian-super-mini with visual feedback and filtering enabled i
   expect(useSettingsStore.getState().filterEnableQuality).toBe(false);
   expect(useSettingsStore.getState().filterBlockLabeled).toBe(false);
   expect(useSettingsStore.getState().filterRegexPatterns).toEqual([]);
-  expect(useSettingsStore.persist.getOptions().version).toBe(18);
+  expect(useSettingsStore.persist.getOptions().version).toBe(21);
 });
 
 test('leaves the double-tap action unset until the user picks one', () => {
@@ -60,6 +60,24 @@ test('keeps a previously saved double-tap action and defaults unset legacy data'
     (await migrate({ doubleTapAction: 'unknown' }, 17)).doubleTapAction,
   ).toBeUndefined();
   expect((await migrate({}, 17)).doubleTapAction).toBeUndefined();
+});
+
+test('keeps red unread counts for existing installs and accepts quieter badge styles', async () => {
+  expect(useSettingsStore.getState().unreadBadgeStyle).toBe('count');
+  expect((await migrate({}, 18)).unreadBadgeStyle).toBe('count');
+  expect((await migrate({}, 19)).unreadBadgeStyle).toBe('count');
+  expect(
+    (await migrate({ unreadBadgeStyle: 'dot' }, 20)).unreadBadgeStyle,
+  ).toBe('dot');
+  expect(
+    (await migrate({ unreadBadgeStyle: 'loud' }, 20)).unreadBadgeStyle,
+  ).toBe('count');
+  useSettingsStore.getState().updateSettings({ unreadBadgeStyle: 'hidden' });
+  expect(useSettingsStore.getState().unreadBadgeStyle).toBe('hidden');
+  useSettingsStore.getState().updateSettings({
+    unreadBadgeStyle: 'loud',
+  } as unknown as Partial<AppSettings>);
+  expect(useSettingsStore.getState().unreadBadgeStyle).toBe('count');
 });
 
 test.each([
@@ -151,7 +169,7 @@ test('hydrates legacy settings and writes back only the new renderer field', asy
       fontSizeScale: 1.3,
       enablePressFeedback: true,
     },
-    version: 18,
+    version: 21,
   });
   expect(JSON.parse(persistedJson).state).not.toHaveProperty('useWebView');
 });
@@ -304,7 +322,7 @@ test('persists and restores sanitized custom regex rules together with a disable
       enableLocalFeedFilter: false,
       filterRegexPatterns: expectedPatterns,
     },
-    version: 18,
+    version: 21,
   });
   useSettingsStore.setState({
     enableLocalFeedFilter: true,
@@ -410,4 +428,15 @@ test('preserves an explicit new regex rule order without mutating saved rules', 
     '广告\\s*推广',
   ]);
   expect(savedPatterns).toEqual(['广告\\s*推广', '^(?:优惠|福利)']);
+});
+
+test('v20 turns watermark removal on for older settings and keeps a saved choice', async () => {
+  expect((await migrate({}, 19)).removeImageWatermark).toBe(true);
+  expect(
+    (await migrate({ removeImageWatermark: false }, 19)).removeImageWatermark,
+  ).toBe(false);
+  expect(
+    (await migrate({ removeImageWatermark: 'off' }, 19)).removeImageWatermark,
+  ).toBe(true);
+  expect(useSettingsStore.getInitialState().removeImageWatermark).toBe(true);
 });

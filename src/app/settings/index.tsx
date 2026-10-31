@@ -7,13 +7,13 @@ import {
   View as RNView,
   ScrollView,
   StyleSheet,
-  Switch,
   TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BouncyButton } from '@/components/BouncyButton';
 import { Section } from '@/components/SettingItem';
 import { Text, useThemeColor } from '@/components/Themed';
+import { ThemedSwitch } from '@/components/ThemedSwitch';
 import { ThemeModeSelector } from '@/components/ThemeModeSelector';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -123,7 +123,6 @@ function SettingsRouteRow({
 function TelemetrySettingRow() {
   const primaryColor = useThemeColor({}, 'primary');
   const controlBackground = useThemeColor({}, 'controlBackground');
-  const mutedColor = useThemeColor({}, 'textSecondary');
   const enabled = useTelemetryStore((state) => state.enabled);
   const setEnabled = useTelemetryStore((state) => state.setEnabled);
 
@@ -140,12 +139,7 @@ function TelemetrySettingRow() {
           App崩溃报告 & 匿名统计
         </Text>
       </RNView>
-      <Switch
-        value={enabled}
-        onValueChange={setEnabled}
-        trackColor={{ false: mutedColor, true: primaryColor }}
-        thumbColor="#ffffff"
-      />
+      <ThemedSwitch value={enabled} onValueChange={setEnabled} />
     </RNView>
   );
 }

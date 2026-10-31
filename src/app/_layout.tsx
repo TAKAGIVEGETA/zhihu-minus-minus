@@ -206,9 +206,11 @@ function RootLayout() {
                   },
                   headerTitleStyle: {
                     color: appThemeColors.text,
-                    fontWeight: 'bold',
+                    fontSize: 18,
+                    fontWeight: '600',
                   },
-                  headerTintColor: currentTint,
+                  // Back arrows match the text, as on the custom detail headers.
+                  headerTintColor: appThemeColors.text,
                   headerShadowVisible: false,
                   headerBackButtonDisplayMode: 'minimal',
                 }}
@@ -276,6 +278,16 @@ function RootLayout() {
                     headerShown: false,
                     animation: 'fade',
                   }}
+                />
+
+                {/* 自定义顶部栏的页面首次渲染也不能预留默认标题栏。 */}
+                <Stack.Screen
+                  name="user/[id]/index"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="user/[id]/stream"
+                  options={{ headerShown: false }}
                 />
 
                 {/* 回答详情页 */}
