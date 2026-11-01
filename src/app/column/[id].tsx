@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -265,14 +264,6 @@ export default function ColumnDetail() {
           headerShadowVisible: false,
           headerStyle: { backgroundColor },
           headerTintColor: textColor,
-          headerLeft: () => (
-            <BouncyButton
-              onPress={() => router.back()}
-              className="mr-2 p-2 rounded-full"
-            >
-              <Ionicons name="chevron-back" size={28} color={textColor} />
-            </BouncyButton>
-          ),
         }}
       />
 

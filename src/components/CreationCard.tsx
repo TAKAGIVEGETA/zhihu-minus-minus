@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { View as NativeView, type ViewInstance } from 'react-native';
-import Animated from 'react-native-reanimated';
 import {
   getContentCollectionMetadata,
   getContentVoteCount,
@@ -201,16 +200,14 @@ export const CreationCard = React.forwardRef<
         style={[{ borderWidth: 1.5, borderColor: 'transparent' }, surface]}
         className="p-4"
       >
-        <Animated.View
-          sharedTransitionTag={`title-${item.question?.id || item.id}`}
-        >
+        <View>
           <Text
             className="text-lg font-bold mb-1.5 leading-6 text-foreground dark:text-foreground-dark"
             numberOfLines={2}
           >
             {getTitle()}
           </Text>
-        </Animated.View>
+        </View>
         <View className="bg-transparent mt-1" pointerEvents="none">
           <Text
             type="secondary"

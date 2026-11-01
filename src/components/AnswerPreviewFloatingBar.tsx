@@ -12,10 +12,12 @@ import { CollectionButton } from '@/components/CollectionButton';
 import {
   CONTENT_ACTION_BAR_HEIGHT,
   ContentActionBar,
+  getContentActionBarBottom,
 } from '@/components/ContentActionBar';
 import { ContentActionButton } from '@/components/ContentActionButton';
 import { MoreActionsButton } from '@/components/MoreActionsButton';
 import { SegmentedVoteCapsule } from '@/components/SegmentedVoteCapsule';
+import { useIsLiquidGlassActive } from '@/components/surfaces/FloatingSurface';
 import { Text, useRuntimeThemeColors, View } from '@/components/Themed';
 
 interface AnswerPreviewFloatingBarProps {
@@ -41,14 +43,21 @@ export function AnswerPreviewFloatingBar({
   const compact = width / fontScale < 400;
   const showCommentCount = width / fontScale >= 360;
   const shown = visible && answer !== null;
+  const isGlass = useIsLiquidGlassActive();
+  const bottom = getContentActionBarBottom(bottomInset);
+  const hideDistance = bottom + CONTENT_ACTION_BAR_HEIGHT + 24;
+
   const progress = useSharedValue(0);
   useEffect(() => {
     progress.value = withTiming(shown ? 1 : 0, { duration: 220 });
   }, [progress, shown]);
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ translateY: (1 - progress.value) * 100 }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    const translateY = (1 - progress.value) * (isGlass ? hideDistance : 100);
+    return {
+      opacity: isGlass ? 1 : progress.value,
+      transform: [{ translateY }],
+    };
+  });
   const collapseAction =
     shown && answer && canCollapse ? (
       <ContentActionButton

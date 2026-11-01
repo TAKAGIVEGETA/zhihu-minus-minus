@@ -7,7 +7,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { BlurView } from 'expo-blur';
-import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, {
   useCallback,
   useEffect,
@@ -15,12 +15,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import PagerView, {
   type PagerViewOnPageScrollEvent,
@@ -28,7 +23,6 @@ import PagerView, {
 import Animated, {
   Extrapolate,
   interpolate,
-  interpolateColor,
   type SharedValue,
   useAnimatedStyle,
   useEvent,
@@ -54,14 +48,25 @@ import { DailyList } from '@/components/DailyList';
 import { FeedCard } from '@/components/FeedCard';
 import { GuestBootstrap } from '@/components/GuestBootstrap';
 import { HotCard, type HotItem } from '@/components/HotCard';
+import { GlassTopNavigation } from '@/components/home/GlassTopNavigation';
+import {
+  getHomeNavigationMetrics,
+  ScrollableNavigationRow,
+} from '@/components/home/ScrollableNavigationRow';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { QueryErrorView } from '@/components/QueryErrorView';
 import { RecentMoments } from '@/components/RecentMoments';
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { ThemedLoadingIndicator } from '@/components/ThemedLoadingIndicator';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
+import {
+  usePaneActive,
+  usePaneDimensions,
+} from '@/features/adaptive-layout/PaneContext';
 import { hasReusableAnswerDetail } from '@/features/rich-content';
 import { useCollapsibleChromeScroll } from '@/hooks/useCollapsibleChromeScroll';
+import { useEndReachedPagination } from '@/hooks/useEndReachedPagination';
 import { useFeedPageReadTouch } from '@/hooks/useFeedPageReadTouch';
 import { useGuestBootstrap } from '@/hooks/useGuestBootstrap';
 import { useRecommendFeedback } from '@/hooks/useRecommendFeedback';
@@ -166,13 +171,13 @@ const MAX_AUTO_FETCH_ROUNDS = 3;
 const MIN_REFRESH_INDICATOR_MS = 500;
 
 export default function HomeScreen() {
-  const { width: windowWidth } = useWindowDimensions();
-  const containerWidth = Math.min(windowWidth - 40, 500);
+  const { width: paneWidth } = usePaneDimensions();
 
   const insets = useSafeAreaInsets();
-  const isFocused = useIsFocused();
+  const isFocused = usePaneActive();
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ tab?: string }>();
   const { visibleTabs, defaultTab, localCityName, useNativeIOSBottomTabs } =
     useSettingsStore();
@@ -195,13 +200,17 @@ export default function HomeScreen() {
   }, [currentTabs]);
   const homeTabsCount = homeTabs.length;
 
-  const bottomCapsuleWidth = useMemo(() => {
-    const hasPublish = currentTabs.includes('publish');
-    const hasProfile = currentTabs.includes('profile');
-    const totalBottomIcons =
-      (homeTabsCount > 0 ? 1 : 0) + (hasPublish ? 1 : 0) + (hasProfile ? 1 : 0);
-    return containerWidth / (totalBottomIcons || 1) - 20;
-  }, [currentTabs, homeTabsCount, containerWidth]);
+  const bottomIconsCount =
+    (homeTabsCount > 0 ? 1 : 0) +
+    (currentTabs.includes('publish') ? 1 : 0) +
+    (currentTabs.includes('profile') ? 1 : 0);
+  const {
+    topInset,
+    bottomViewportWidth: containerWidth,
+    bottomContentWidth,
+    bottomItemWidth,
+    bottomButtonWidth: bottomCapsuleWidth,
+  } = getHomeNavigationMetrics(paneWidth, bottomIconsCount);
 
   // 计算初始页码
   const initialPageIndex = useMemo(() => {
@@ -248,6 +257,14 @@ export default function HomeScreen() {
   const secondaryTextColor = useThemeColor({}, 'textSecondary');
   const indicatorBgColor = useThemeColor({}, 'primary_26');
   const [currentPage, setCurrentPage] = useState(initialPageIndex);
+  const bottomActiveIndex =
+    currentTabs[currentPage] === 'profile'
+      ? (homeTabsCount > 0 ? 1 : 0) + (currentTabs.includes('publish') ? 1 : 0)
+      : currentTabs[currentPage] === 'publish'
+        ? homeTabsCount > 0
+          ? 1
+          : 0
+        : 0;
   const { ready: guestCookieReady, attempt: guestBootstrapAttempt } =
     useGuestBootstrap(!cookies);
 
@@ -315,7 +332,7 @@ export default function HomeScreen() {
     [],
   );
 
-  const handleHomeTabPress = () => {
+  const handleHomeTabPress = useCallback(() => {
     const isAtHome = currentPage < homeTabsCount;
 
     if (isAtHome) {
@@ -338,9 +355,31 @@ export default function HomeScreen() {
       );
       pagerRef.current?.setPage(targetPage);
     }
-  };
+  }, [currentPage, homeTabsCount, scrolledTabs]);
+
+  // 监听原生底栏 tabPress 事件：在首页处于激活状态时重复点击底部 Tab 触发滚动置顶或刷新
+  useEffect(() => {
+    if (!nativeIOSBottomTabs) return;
+    const nav = navigation as unknown as {
+      addListener: (
+        event: 'tabPress',
+        callback: (e: { preventDefault: () => void }) => void,
+      ) => () => void;
+    };
+    const unsubscribe = nav.addListener?.('tabPress', () => {
+      // 仅在首页处于当前焦点状态时（即重复点击当前已处于前台的“首页”Tab）才触发滚动置顶或刷新；
+      // 从底栏其他 Tab（如“我的”）切换回首页时，isFocused 为 false，保持既有阅读位置不变。
+      if (!isFocused) return;
+      handleHomeTabPress();
+    });
+    return unsubscribe;
+  }, [navigation, nativeIOSBottomTabs, isFocused, handleHomeTabPress]);
 
   const handleTabPress = (index: number) => {
+    if (currentPage === index) {
+      handleHomeTabPress();
+      return;
+    }
     pagerRef.current?.setPage(index);
   };
 
@@ -377,6 +416,31 @@ export default function HomeScreen() {
     };
   });
 
+  // 玻璃模式顶部导航栏动画样式（主要通过 translateY 位移隐藏，避免中间透明度破坏原生玻璃折射上下文）
+  const topGlassNavAnimStyle = useAnimatedStyle(() => {
+    if (homeTabsCount === 0) {
+      return {
+        transform: [{ translateY: -120 }],
+        pointerEvents: 'none',
+      };
+    }
+    const fadeStart = homeTabsCount - 1;
+    const fadeEnd = homeTabsCount;
+    const translateY = interpolate(
+      scrollX.value,
+      [fadeStart, fadeEnd],
+      [0, -120],
+      Extrapolate.CLAMP,
+    );
+    const hideDistance = insets.top + TOP_NAV_HEIGHT;
+    const isHidden =
+      topNavOffset.value >= hideDistance || scrollX.value > fadeStart + 0.5;
+    return {
+      transform: [{ translateY: translateY - topNavOffset.value }],
+      pointerEvents: isHidden ? 'none' : 'auto',
+    };
+  });
+
   const bottomNavAnimStyle = useAnimatedStyle(() => {
     const hideDistance = insets.bottom + BOTTOM_NAV_HEIGHT;
     const visibility = 1 - bottomNavOffset.value / hideDistance;
@@ -384,22 +448,6 @@ export default function HomeScreen() {
       opacity: visibility,
       transform: [{ translateY: bottomNavOffset.value }],
       pointerEvents: visibility <= 0 ? 'none' : 'auto',
-    };
-  });
-
-  // 顶部 Tab 指示器动画
-  const topIndicatorStyle = useAnimatedStyle(() => {
-    if (homeTabsCount <= 1) return { transform: [{ translateX: 0 }] };
-    const tabWidth = 58;
-    const maxIndex = Math.max(0, homeTabsCount - 1);
-    const clampedScroll = interpolate(
-      scrollX.value,
-      [0, maxIndex],
-      [0, maxIndex],
-      Extrapolate.CLAMP,
-    );
-    return {
-      transform: [{ translateX: clampedScroll * tabWidth }],
     };
   });
 
@@ -411,7 +459,7 @@ export default function HomeScreen() {
     // 底部导航栏总图标数 (首页算一个)
     const totalBottomIcons =
       (homeTabsCount > 0 ? 1 : 0) + (hasPublish ? 1 : 0) + (hasProfile ? 1 : 0);
-    const iconWidth = containerWidth / (totalBottomIcons || 1);
+    const iconWidth = bottomContentWidth / (totalBottomIcons || 1);
 
     // 构建插值映射表
     const inputRange: number[] = [];
@@ -532,84 +580,24 @@ export default function HomeScreen() {
         </AnimatedPagerView>
       </GestureDetector>
 
-      {/* 2. 顶部 Tab 导航 (Home 专属) */}
-      <Animated.View
-        style={[
-          styles.topNavContainer,
-          colorScheme === 'light' && styles.lightTranslucentShadow,
-          { top: insets.top },
-          topNavAnimStyle,
-        ]}
-      >
-        <BlurView
-          intensity={100}
-          tint={colorScheme === 'dark' ? 'dark' : 'light'}
-          style={[
-            styles.blurWrapper,
-            {
-              backgroundColor:
-                colorScheme === 'dark'
-                  ? 'rgba(0,0,0,0.7)'
-                  : 'rgba(255,255,255,0.85)',
-            },
-          ]}
-        >
-          <View style={styles.topNav}>
-            <View
-              style={{
-                flexDirection: 'row',
-                flex: 1,
-                backgroundColor: 'transparent',
-                alignItems: 'center',
-                position: 'relative',
-              }}
-            >
-              <Animated.View
-                style={[
-                  styles.topPill,
-                  { backgroundColor: indicatorBgColor },
-                  topIndicatorStyle,
-                ]}
-              />
-              {currentTabs
-                .filter((t) => !['publish', 'profile'].includes(t))
-                .map((tab, index) => {
-                  const labels: Record<string, string> = {
-                    following: '关注',
-                    recommend: '推荐',
-                    local: localCityName || '同城',
-                    hot: '热榜',
-                    daily: '日报',
-                  };
-                  return (
-                    <BouncyButton
-                      key={tab}
-                      onPress={() => handleTabPress(index)}
-                      style={[
-                        styles.navItem,
-                        { width: 54, paddingHorizontal: 0 },
-                      ]}
-                    >
-                      <TopTabLabel
-                        index={index}
-                        label={labels[tab]}
-                        scrollX={scrollX}
-                        activeColor={tintColor}
-                        inactiveColor={secondaryTextColor}
-                      />
-                    </BouncyButton>
-                  );
-                })}
-            </View>
-            <BouncyButton
-              onPress={() => router.push('/search')}
-              style={styles.searchBtn}
-            >
-              <Ionicons name="search" size={22} color={textColor} />
-            </BouncyButton>
-          </View>
-        </BlurView>
-      </Animated.View>
+      {/* 2. 顶部 Tab 导航 (Home 专属，原生模式与普通模式均采用 Tab/搜索双胶囊分离设计) */}
+      <GlassTopNavigation
+        tabs={homeTabs}
+        currentPage={currentPage}
+        scrollX={scrollX}
+        topInset={topInset}
+        insets={insets}
+        colorScheme={colorScheme}
+        indicatorBgColor={indicatorBgColor}
+        tintColor={tintColor}
+        secondaryTextColor={secondaryTextColor}
+        textColor={textColor}
+        localCityName={localCityName}
+        animStyle={nativeIOSBottomTabs ? topGlassNavAnimStyle : topNavAnimStyle}
+        useLiquidGlass={nativeIOSBottomTabs}
+        onTabPress={handleTabPress}
+        onSearchPress={() => router.push('/search')}
+      />
 
       {!nativeIOSBottomTabs && (
         /* 3. 底部悬浮导航栏 (Custom TabBar) */
@@ -634,7 +622,15 @@ export default function HomeScreen() {
               },
             ]}
           >
-            <View style={styles.bottomNavItems}>
+            <ScrollableNavigationRow
+              testID="home-bottom-navigation"
+              contentWidth={bottomContentWidth}
+              activeStart={bottomActiveIndex * bottomItemWidth + 10}
+              activeEnd={
+                bottomActiveIndex * bottomItemWidth + 10 + bottomCapsuleWidth
+              }
+              contentStyle={styles.bottomNavItems}
+            >
               {/* 联动指示器 */}
               <Animated.View
                 style={[
@@ -649,6 +645,7 @@ export default function HomeScreen() {
 
               {currentTabs.some((t) => !['publish', 'profile'].includes(t)) && (
                 <BottomTabIcon
+                  label="首页"
                   // 判断逻辑：当前在首页区域且当前子 Tab 有滚动
                   isScrollTop={
                     currentPage <
@@ -685,6 +682,7 @@ export default function HomeScreen() {
 
               {currentTabs.includes('publish') && (
                 <BottomTabIcon
+                  label="发布"
                   icon={
                     currentTabs[currentPage] === 'publish'
                       ? 'add-circle'
@@ -704,6 +702,7 @@ export default function HomeScreen() {
 
               {currentTabs.includes('profile') && (
                 <BottomTabIcon
+                  label="我的"
                   icon={
                     currentTabs[currentPage] === 'profile'
                       ? 'person'
@@ -719,7 +718,7 @@ export default function HomeScreen() {
                   width={bottomCapsuleWidth}
                 />
               )}
-            </View>
+            </ScrollableNavigationRow>
           </BlurView>
         </Animated.View>
       )}
@@ -733,40 +732,10 @@ export default function HomeScreen() {
   );
 }
 
-function TopTabLabel({
-  index,
-  label,
-  scrollX,
-  activeColor,
-  inactiveColor,
-}: {
-  index: number;
-  label: string;
-  scrollX: SharedValue<number>;
-  activeColor: string;
-  inactiveColor: string;
-}) {
-  const animatedStyle = useAnimatedStyle(() => {
-    const distanceFromSelection = Math.min(1, Math.abs(scrollX.value - index));
-    return {
-      color: interpolateColor(
-        distanceFromSelection,
-        [0, 1],
-        [activeColor, inactiveColor],
-      ),
-    };
-  });
-
-  return (
-    <Animated.Text style={[styles.navText, animatedStyle]}>
-      {label}
-    </Animated.Text>
-  );
-}
-
 const _AnimatedIcon = Animated.createAnimatedComponent(Ionicons);
 
 function BottomTabIcon({
+  label,
   icon,
   onPress,
   color,
@@ -774,6 +743,7 @@ function BottomTabIcon({
   isScrollTop,
   width,
 }: {
+  label: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
   onPress: () => void;
   color: string;
@@ -802,6 +772,8 @@ function BottomTabIcon({
   return (
     <View style={styles.bottomTabItem} className="bg-transparent">
       <BouncyButton
+        accessibilityRole="button"
+        accessibilityLabel={label}
         onPress={onPress}
         style={{
           width: width || 44,
@@ -1164,10 +1136,12 @@ const FeedList = React.forwardRef<
       fetchNextFeedPage,
       isActive && !isRefreshing,
     );
+    const cancelPendingIntentRef = useRef<() => void>(() => {});
 
     const handleRefresh = useCallback(async () => {
       if (refreshInFlightRef.current) return;
 
+      cancelPendingIntentRef.current();
       refreshInFlightRef.current = true;
       const startedAt = Date.now();
       setIsRefreshing(true);
@@ -1284,6 +1258,26 @@ const FeedList = React.forwardRef<
 
     const flashListRef = useRef<FlashListRef<FeedListItem>>(null);
 
+    const currentCursor =
+      data?.pages.at(-1)?.nextUrl ?? (data?.pages.length || 0);
+    const isBusy = isFetching || isRefreshing || refreshInFlightRef.current;
+    const { handleEndReached, isPendingIntent, cancelPendingIntent } =
+      useEndReachedPagination({
+        isActive,
+        hasNextPage: Boolean(hasNextPage),
+        isFetchNextPageError,
+        isBusy,
+        cursor: currentCursor,
+        onFetchNextPage: fetchNextPage,
+        itemCount: flattenedData.length,
+        isAutoFetching:
+          (filterEnabled || localDedupEnabled) &&
+          flattenedData.length < MIN_RENDERABLE_ITEMS,
+        listRef: flashListRef,
+        endReachedThreshold: 0.5,
+      });
+    cancelPendingIntentRef.current = cancelPendingIntent;
+
     const scrollHandler = useCollapsibleChromeScroll({
       enabled: isActive && AUTO_HIDE_NAV_TABS.includes(tab),
       topOffset: topNavOffset,
@@ -1358,25 +1352,14 @@ const FeedList = React.forwardRef<
             const key = getInMemoryFeedKey(item);
             return `feed-${key || index}`;
           }}
-          onEndReached={() => {
-            if (
-              isActive &&
-              hasNextPage &&
-              !isFetching &&
-              !refreshInFlightRef.current &&
-              !isFetchNextPageError &&
-              (!(filterEnabled || localDedupEnabled) ||
-                flattenedData.length >= MIN_RENDERABLE_ITEMS)
-            )
-              void fetchNextPage();
-          }}
+          onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           onScroll={scrollHandler}
           scrollEventThrottle={16}
           contentContainerStyle={{
-            paddingTop: insets.top + 70,
+            paddingTop: insets.top + 60,
             paddingBottom: 120,
           }}
           renderItem={({ item }: { item: FeedListItem }) => {
@@ -1431,14 +1414,24 @@ const FeedList = React.forwardRef<
             ) : null
           }
           ListFooterComponent={
-            isFetchingNextPage ? (
-              <ActivityIndicator style={{ margin: 20 }} />
-            ) : isFetchNextPageError ? (
+            isFetchNextPageError ? (
               <QueryErrorView
                 compact
                 message="更多内容加载失败"
-                onRetry={() => void fetchNextPage()}
+                error={feedError}
+                onRetry={() => {
+                  cancelPendingIntent();
+                  void fetchNextPage();
+                }}
               />
+            ) : isFetchingNextPage || isPendingIntent ? (
+              <View style={styles.footerContainer}>
+                <ThemedLoadingIndicator
+                  size={22}
+                  color={tintColor}
+                  trackColor={indicatorTrackColor}
+                />
+              </View>
             ) : (filterEnabled || localDedupEnabled) &&
               !isError &&
               !isRefreshing &&
@@ -1448,7 +1441,10 @@ const FeedList = React.forwardRef<
               (!hasNextPage || autoFetchExhausted) ? (
               hasNextPage ? (
                 <BouncyButton
-                  onPress={() => void fetchNextPage()}
+                  onPress={() => {
+                    cancelPendingIntent();
+                    void fetchNextPage();
+                  }}
                   className="items-center p-5"
                 >
                   <Text type="primary">过滤后内容偏少，点击继续加载</Text>
@@ -1461,12 +1457,27 @@ const FeedList = React.forwardRef<
                   过滤后内容偏少，已无更多可加载
                 </Text>
               )
+            ) : isError ||
+              (isLoading && flattenedData.length === 0) ||
+              (flattenedData.length === 0 &&
+                !(filterEnabled || localDedupEnabled)) ? null : !hasNextPage ? (
+              <View style={styles.footerContainer}>
+                <Text type="secondary" style={styles.footerText}>
+                  暂时没有更多内容
+                </Text>
+              </View>
+            ) : hasNextPage ? (
+              <View style={styles.footerContainer}>
+                <Text type="secondary" style={styles.footerText}>
+                  继续上滑加载
+                </Text>
+              </View>
             ) : null
           }
           ListEmptyComponent={
             isRefreshing ? null : isLoading || isRefetching ? (
               <View className="flex-1 items-center justify-center mt-[100px] bg-transparent">
-                <ActivityIndicator size="large" color={tintColor} />
+                <ThemedLoadingIndicator size={36} color={tintColor} />
               </View>
             ) : isError ? (
               <QueryErrorView
@@ -1614,45 +1625,6 @@ function parseHotData(item: RawFeedItem, index: number): HotItem {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   pager: { flex: 1 },
-  topNavContainer: { position: 'absolute', left: 16, right: 16, zIndex: 100 },
-  blurWrapper: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  topNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    height: 50,
-  },
-  navItem: {
-    paddingHorizontal: 12,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 4,
-  },
-  navText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  topPill: {
-    position: 'absolute',
-    width: 54,
-    height: 34,
-    borderRadius: 17,
-    left: 0,
-  },
-  searchBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 
   bottomBarContainer: {
     position: 'absolute',
@@ -1665,7 +1637,7 @@ const styles = StyleSheet.create({
   bottomBlur: { borderRadius: 32, overflow: 'hidden', height: 64 },
   bottomNavItems: {
     flexDirection: 'row',
-    flex: 1,
+    height: BOTTOM_NAV_HEIGHT,
     alignItems: 'center',
     position: 'relative',
   },
@@ -1680,5 +1652,19 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     left: 10,
+  },
+  footerContainer: {
+    height: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerText: {
+    marginLeft: 8,
+    fontSize: 13,
+  },
+  footerActionText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
