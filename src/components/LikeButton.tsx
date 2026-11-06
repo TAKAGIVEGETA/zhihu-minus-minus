@@ -18,6 +18,7 @@ import { ImpactFeedbackStyle, impactAsync } from '@/utils/haptics';
 import { showToast } from '@/utils/toast';
 import { getZhihuErrorMessage } from '@/utils/zhihuError';
 import { BouncyButton } from './BouncyButton';
+import { useContentActionBarColor } from './ContentActionBarColor';
 import { Text, useThemeColor } from './Themed';
 import { VoteTriangle } from './VoteTriangle';
 
@@ -74,7 +75,7 @@ export const LikeButton = ({
   }
 
   const isUpvoted = voted === 1;
-  const foregroundColor =
+  const themeForegroundColor =
     variant === 'default'
       ? isUpvoted
         ? onPrimary
@@ -82,6 +83,7 @@ export const LikeButton = ({
       : isUpvoted
         ? primaryColor
         : mutedColor;
+  const foregroundColor = useContentActionBarColor(themeForegroundColor);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
