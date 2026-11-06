@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import {
